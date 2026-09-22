@@ -1,0 +1,178 @@
+================================================================================
+                    EXPLORATORY DATA ANALYSIS REPORT
+               Dataset: combined_viewport_data.csv (AVTrack360)
+================================================================================
+
+1. TOTAL NUMBER OF ROWS
+--------------------------------------------------------------------------------
+Total row count: 284,247 rows
+Columns: video, hmd, timestamp, pitch, yaw, roll
+
+2. NUMBER OF UNIQUE VIDEOS
+--------------------------------------------------------------------------------
+Total unique videos: 20
+List of unique videos:
+1.mp4, 2.mp4, 3.mp4, 4.mp4, 5.mp4, 6.mp4, 7.mp4, 8.mp4, 9.mp4, 10.mp4,
+11.mp4, 12.mp4, 13.mp4, 14.mp4, 15.mp4, 16.mp4, 17.mp4, 18.mp4, 19.mp4, 20.mp4
+
+3. UNIQUE USERS / SUBJECTS IDENTIFICATION
+--------------------------------------------------------------------------------
+Can current CSV structure distinguish individual subjects/users? NO.
+
+Explanation:
+The CSV dataset contains only 6 columns: ['video', 'hmd', 'timestamp', 'pitch', 'yaw', 'roll'].
+- There is NO 'user_id', 'subject_id', 'session_id', or source JSON file name column included.
+- The 'hmd' column contains a static hardware label ("vive") across all 284,247 rows.
+- Multiple user viewing trajectories per video are concatenated end-to-end (evidenced by 974 timestamp resets where timestamp drops from ~30s back down to 0s), but individual subject identities cannot be distinguished or mapped to specific subjects from the current CSV metadata alone.
+
+4. NUMBER OF SAMPLES PER VIDEO
+--------------------------------------------------------------------------------
+- 4.mp4:  14,300 samples
+- 15.mp4: 14,275 samples
+- 13.mp4: 14,248 samples
+- 19.mp4: 14,247 samples
+- 12.mp4: 14,232 samples
+- 14.mp4: 14,224 samples
+- 11.mp4: 14,220 samples
+- 2.mp4:  14,219 samples
+- 20.mp4: 14,211 samples
+- 5.mp4:  14,211 samples
+- 7.mp4:  14,206 samples
+- 6.mp4:  14,205 samples
+- 8.mp4:  14,198 samples
+- 16.mp4: 14,198 samples
+- 1.mp4:  14,195 samples
+- 9.mp4:  14,191 samples
+- 17.mp4: 14,190 samples
+- 3.mp4:  14,187 samples
+- 10.mp4: 14,150 samples
+- 18.mp4: 14,140 samples
+
+5. TIMESTAMP RANGE FOR EACH VIDEO
+--------------------------------------------------------------------------------
+- 1.mp4:  Min = 0.222 s | Max = 30.030 s | Duration = 29.808 s
+- 2.mp4:  Min = 0.115 s | Max = 30.031 s | Duration = 29.916 s
+- 3.mp4:  Min = 0.219 s | Max = 30.025 s | Duration = 29.806 s
+- 4.mp4:  Min = 0.000 s | Max = 30.096 s | Duration = 30.096 s
+- 5.mp4:  Min = 0.094 s | Max = 30.025 s | Duration = 29.931 s
+- 6.mp4:  Min = 0.234 s | Max = 30.026 s | Duration = 29.792 s
+- 7.mp4:  Min = 0.233 s | Max = 30.030 s | Duration = 29.797 s
+- 8.mp4:  Min = 0.195 s | Max = 30.031 s | Duration = 29.836 s
+- 9.mp4:  Min = 0.216 s | Max = 30.030 s | Duration = 29.814 s
+- 10.mp4: Min = 0.202 s | Max = 30.030 s | Duration = 29.828 s
+- 11.mp4: Min = 0.089 s | Max = 30.033 s | Duration = 29.944 s
+- 12.mp4: Min = 0.000 s | Max = 30.026 s | Duration = 30.026 s
+- 13.mp4: Min = 0.232 s | Max = 30.094 s | Duration = 29.862 s
+- 14.mp4: Min = 0.000 s | Max = 30.026 s | Duration = 30.026 s
+- 15.mp4: Min = 0.000 s | Max = 30.062 s | Duration = 30.062 s
+- 16.mp4: Min = 0.237 s | Max = 30.030 s | Duration = 29.793 s
+- 17.mp4: Min = 0.000 s | Max = 30.096 s | Duration = 30.096 s
+- 18.mp4: Min = 0.000 s | Max = 30.029 s | Duration = 30.029 s
+- 19.mp4: Min = 0.220 s | Max = 30.093 s | Duration = 29.873 s
+- 20.mp4: Min = 0.221 s | Max = 30.030 s | Duration = 29.809 s
+
+Overall Dataset Timestamp Range: 0.000 s to 30.096 s
+
+6. AVERAGE SAMPLING INTERVAL AND SAMPLING FREQUENCY
+--------------------------------------------------------------------------------
+Computed over positive time steps (delta_t > 0) within continuous trajectories:
+- Mean sampling interval (mean delta_t):   0.100911 seconds (100.91 ms)
+- Median sampling interval (median delta_t): 0.101000 seconds (101.00 ms)
+- Standard deviation of sampling interval: 0.002394 seconds (2.39 ms)
+- Minimum sampling interval:                0.002000 seconds (2.00 ms)
+- Maximum sampling interval:                0.433000 seconds (433.00 ms)
+- Average sampling frequency (1 / mean_dt):   9.9097 Hz (~10 Hz)
+- Median sampling frequency (1 / median_dt): 9.9010 Hz (~10 Hz)
+
+7. MISSING VALUES IN EVERY COLUMN
+--------------------------------------------------------------------------------
+- video:     0 missing values (0.0%)
+- hmd:       0 missing values (0.0%)
+- timestamp: 0 missing values (0.0%)
+- pitch:     0 missing values (0.0%)
+- yaw:       0 missing values (0.0%)
+- roll:      0 missing values (0.0%)
+- Total missing values: 0
+
+8. DUPLICATE ROWS
+--------------------------------------------------------------------------------
+- Exact duplicate rows (matching all 6 columns): 39 rows
+- Rows sharing (video, timestamp): 100,254 rows (occurs because multiple user trajectories are concatenated for the same video without user IDs)
+
+9. YAW STATISTICS
+--------------------------------------------------------------------------------
+- Minimum:            -180 degrees
+- Maximum:             180 degrees
+- Mean:               -4.5007 degrees
+- Standard Deviation: 85.6485 degrees
+
+10. PITCH STATISTICS
+--------------------------------------------------------------------------------
+- Minimum:            -87 degrees
+- Maximum:             86 degrees
+- Mean:                 0.5683 degrees
+- Standard Deviation: 18.8514 degrees
+
+11. ROLL STATISTICS
+--------------------------------------------------------------------------------
+- Minimum:            -67 degrees
+- Maximum:            177 degrees
+- Mean:                 0.5145 degrees
+- Standard Deviation:  5.6866 degrees
+
+12. YAW WRAP-AROUND ANALYSIS
+--------------------------------------------------------------------------------
+- Does yaw wrap around at -180° / 180°? YES.
+- Details: Yaw values range strictly from -180° to +180°.
+- When head rotation exceeds +180°, values wrap around to -180° (and vice-versa).
+- Observed wrap-around boundary crossings:
+  - +180° to -180° transitions: 628 occurrences
+  - -180° to +180° transitions: 576 occurrences
+
+13. TIMESTAMP UNIFORMITY
+--------------------------------------------------------------------------------
+- Are timestamps uniformly spaced? NO.
+- Timestamps are quasi-uniform with minor jitter around 10 Hz (~0.100s - 0.101s).
+- Distribution of positive delta_t values:
+  - 0.101 s: 139,755 occurrences (49.34%)
+  - 0.100 s: 126,234 occurrences (44.57%)
+  - 0.102 s: 5,486 occurrences (1.94%)
+  - 0.111 s: 5,225 occurrences (1.84%)
+  - Other values: 6,553 occurrences (2.31%)
+- Total distinct positive delta_t values: 83
+
+14. ANOMALOUS OR INVALID VALUES
+--------------------------------------------------------------------------------
+- Pitch Range: [-87°, +86°] -> Valid (within expected [-90°, +90°] range, 0 anomalies).
+- Yaw Range: [-180°, +180°] -> Valid spherical yaw domain (0 out-of-bounds values).
+- Negative Timestamps: 0 rows.
+- Extreme Roll Values: While 99% of roll values fall between -14° and +15°, 100 rows (0.035%) exhibit roll values > 45° or < -45° (peaking at +177° and -67°), representing head tilt anomalies or sensor glitches.
+- Timestamp Resets: 974 occurrences of delta_t <= 0 (timestamp resetting from ~30s back to 0.0s), indicating boundaries where separate viewing trajectories were appended back-to-back.
+- Exact Duplicates: 39 exact duplicate rows present in the file.
+
+15. REPRESENTATIVE ROWS
+--------------------------------------------------------------------------------
+Beginning of dataset (First 5 rows):
+   video   hmd  timestamp  pitch  yaw  roll
+0  6.mp4  vive      0.243      4    0    -1
+1  6.mp4  vive      0.342      4    0    -1
+2  6.mp4  vive      0.442      4    0    -1
+3  6.mp4  vive      0.543      3    0     0
+4  6.mp4  vive      0.657      2    0     0
+
+Middle of dataset (Rows around index 142121):
+         video   hmd  timestamp  pitch  yaw  roll
+142121  15.mp4  vive     20.435     15 -173    -3
+142122  15.mp4  vive     20.536     14 -171    -2
+142123  15.mp4  vive     20.636     14 -170    -1
+142124  15.mp4  vive     20.737     14 -170    -1
+142125  15.mp4  vive     20.837     14 -171    -1
+
+End of dataset (Last 5 rows):
+         video   hmd  timestamp  pitch  yaw  roll
+284242  16.mp4  vive     29.628      4  -81    -4
+284243  16.mp4  vive     29.729      4  -80    -4
+284244  16.mp4  vive     29.829      4  -80    -4
+284245  16.mp4  vive     29.929      4  -80    -4
+284246  16.mp4  vive     30.030      3  -79    -4
+================================================================================

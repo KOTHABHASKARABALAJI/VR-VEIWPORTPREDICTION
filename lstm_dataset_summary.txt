@@ -1,0 +1,86 @@
+================================================================================
+                    LSTM SUPERVISED DATASET SUMMARY REPORT
+               Dataset: viewport_trajectories.csv (AVTrack360)
+================================================================================
+
+1. DATASET OVERVIEW & SPLIT STATISTICS
+--------------------------------------------------------------------------------
+- Total Trajectories Processed:   960 trajectories (48 subjects × 20 videos)
+- Total Generated Samples:        270,807 samples
+- Discarded Boundary Samples:     13,440 samples (14 samples per trajectory: 9 history + 5 horizon)
+- Random Seed:                    42
+
+Split Breakdown:
+- Training Samples:               186,176 samples (68.75% of generated samples)
+- Validation Samples:             39,506 samples (14.59% of generated samples)
+- Test Samples:                   45,125 samples (16.66% of generated samples)
+
+Subject Split (70% Train, 15% Validation, 15% Test):
+- Training Subjects (33):         [2, 3, 5, 6, 7, 8, 10, 11, 13, 14, 15, 17, 18, 19, 21, 23, 26, 27, 28, 29, 31, 32, 33, 34, 35, 36, 39, 41, 42, 45, 46, 47, 48]
+- Validation Subjects (7):        [4, 12, 24, 25, 37, 38, 43]
+- Test Subjects (8):              [9, 16, 20, 22, 30, 40, 44, 49]
+
+2. MODEL INPUT & TARGET CONFIGURATION
+--------------------------------------------------------------------------------
+- Input Sequence Length (L):     10 historical steps (~1.0 second at 10 Hz)
+- Prediction Horizon (k):         5 steps ahead (~0.5 seconds into the future)
+- Number of Input Features:       7 features
+- Input Feature Names:
+  1. sin_yaw   : sin(radians(yaw)) -> circular representation
+  2. cos_yaw   : cos(radians(yaw)) -> circular representation
+  3. pitch     : pitch angle (degrees)
+  4. yaw_vel   : yaw angular velocity (deg/s, calculated with unwrapped yaw)
+  5. pitch_vel : pitch angular velocity (deg/s)
+  6. yaw_acc   : yaw angular acceleration (deg/s²)
+  7. pitch_acc : pitch angular acceleration (deg/s²)
+
+- Target Representation (y):
+  - Shape: (N, 3)
+  - y[:, 0] = sin(radians(future_yaw))
+  - y[:, 1] = cos(radians(future_yaw))
+  - y[:, 2] = future_pitch (degrees)
+  - Raw Target Degrees Array (y_deg): Shape (N, 2) containing [future_yaw_deg, future_pitch_deg] for direct degree MAE evaluation during testing.
+
+3. NORMALIZATION METHOD & PARAMETERS
+--------------------------------------------------------------------------------
+- Method: Standard Z-score Normalization: X_norm = (X - norm_mean) / norm_std
+- IMPORTANT: Normalization parameters were fitted STRICTLY ON TRAINING SUBJECTS ONLY.
+
+Parameters (Fitted on Train Set):
+- sin_yaw   : Mean = -0.0287 | Std = 0.6410
+- cos_yaw   : Mean =  0.2772 | Std = 0.7144
+- pitch     : Mean = -0.0581 | Std = 18.8304
+- yaw_vel   : Mean =  0.3947 | Std = 42.1019
+- pitch_vel : Mean =  0.0188 | Std = 18.9996
+- yaw_acc   : Mean =  0.0533 | Std = 165.6945
+- pitch_acc : Mean = -0.0083 | Std = 111.0671
+
+Parameters Location: Saved inside NPZ files as arrays 'norm_mean' and 'norm_std'.
+
+4. GENERATED OUTPUT FILES
+--------------------------------------------------------------------------------
+1. lstm_train.npz
+   - X shape        : (186176, 10, 7)
+   - y shape        : (186176, 3)
+   - y_deg shape    : (186176, 2)
+2. lstm_validation.npz
+   - X shape        : (39506, 10, 7)
+   - y shape        : (39506, 3)
+   - y_deg shape    : (39506, 2)
+3. lstm_test.npz
+   - X shape        : (45125, 10, 7)
+   - y shape        : (45125, 3)
+   - y_deg shape    : (45125, 2)
+4. lstm_subject_split.csv
+   - 48 rows mapping subject_id -> split ('train', 'validation', 'test')
+5. lstm_dataset_summary.txt
+   - Complete configuration and verification report.
+
+5. VERIFICATION & SANITY CHECKS RESULT
+--------------------------------------------------------------------------------
+- [PASSED] Missing Values Check: 0 missing values across all features and targets.
+- [PASSED] Value Integrity Check: All arrays contain strictly finite numerical values (0 NaNs, 0 Infs).
+- [PASSED] Disjoint Subject Split: 0 subject overlap between Train, Validation, and Test sets.
+- [PASSED] Trajectory Boundary Integrity: Every 10-step sequence and its 0.5s target belong 100% to a single subject-video trajectory. No sequence crosses subject or video boundaries.
+- [PASSED] Circular Angle Handling: Yaw wrap-around transitions (+180° -> -180°) handled correctly via unwrapping for derivatives and sin/cos representation for model input/target.
+================================================================================
