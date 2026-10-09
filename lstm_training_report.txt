@@ -1,0 +1,78 @@
+================================================================================
+                    LSTM MODEL TRAINING & EVALUATION REPORT
+               Dataset: lstm_train.npz / lstm_val.npz / lstm_test.npz
+================================================================================
+
+1. MODEL ARCHITECTURE & CONFIGURATION
+--------------------------------------------------------------------------------
+- Architecture:
+  - Input Layer:  Shape (10, 7) (1.0s history at 10 Hz)
+  - Layer 1:      LSTM (64 units)
+  - Layer 2:      Dense (32 units, ReLU activation)
+  - Layer 3:      Dense (3 units, Linear activation) -> [sin(yaw), cos(yaw), norm_pitch]
+- Optimizer:      Adam (learning_rate = 0.001)
+- Loss Function:  Mean Squared Error (MSE)
+- Batch Size:     256
+- Max Epochs:     100
+- Early Stopping: Patience = 10, monitor = val_loss, restore_best_weights = True
+
+2. TRAINING RESULTS
+--------------------------------------------------------------------------------
+- Total Epochs Run:       19
+- Best Epoch:             9
+- Final Training Loss:    0.047393
+- Best Validation Loss:   0.053511
+
+3. TEST SET EVALUATION METRICS (45,125 Samples)
+--------------------------------------------------------------------------------
+Yaw Metrics (Circular Angle Error):
+- Yaw MAE:                       8.2519 degrees
+- Yaw RMSE:                      12.5786 degrees
+- Yaw Median Absolute Error:     5.3830 degrees
+- Yaw 90th Percentile Error:     18.8951 degrees
+
+Pitch Metrics:
+- Pitch MAE:                     3.6493 degrees
+- Pitch RMSE:                    5.6289 degrees
+- Pitch Median Absolute Error:   2.2290 degrees
+- Pitch 90th Percentile Error:   8.5950 degrees
+
+Combined Spherical Angular Error (Great-Circle Distance):
+- Overall Mean Error (MAE):      9.5329 degrees
+- Overall Median Error:          6.8843 degrees
+- Overall 90th Percentile Error: 20.0261 degrees
+- Overall RMSE Error:            13.2654 degrees
+
+4. PER-VIDEO EVALUATION SUMMARY
+--------------------------------------------------------------------------------
+ video  num_test_samples  yaw_mae_deg  yaw_rmse_deg  yaw_median_err_deg  yaw_90th_err_deg  pitch_mae_deg  pitch_rmse_deg  pitch_median_err_deg  pitch_90th_err_deg  combined_great_circle_mae_deg  combined_great_circle_median_deg  combined_great_circle_90th_deg
+ 1.mp4              2257     7.685238     11.251341            5.042999         18.390820       2.936889        4.652079              1.879525            6.681422                       8.744724                          6.161284                       19.139797
+10.mp4              2246     9.175903     13.347259            6.202515         20.834770       3.980299        5.857842              2.685907            9.146076                      10.503500                          7.932983                       21.476297
+11.mp4              2256     9.462406     13.421863            6.256004         21.636520       5.111554        7.575671              3.222926           12.173005                      11.099073                          8.323303                       23.215340
+12.mp4              2257     8.984368     12.261684            6.676102         19.831125       3.729571        5.431200              2.510398            8.551578                      10.011880                          7.852479                       20.131458
+13.mp4              2263     8.263405     12.050888            5.766083         18.717545       4.490886        6.646277              2.778913           10.895798                      10.056791                          7.753372                       20.968447
+14.mp4              2258     8.253798     12.513737            5.337242         19.188229       3.990197        5.953008              2.431716            9.589704                       9.744021                          7.004596                       20.517389
+15.mp4              2270     7.567769     11.238153            4.998489         17.206951       2.735922        3.935008              1.880403            6.337279                       8.508510                          6.110980                       17.946619
+16.mp4              2254     9.646601     18.506023            4.444534         23.103642       2.443298        3.852990              1.468815            5.801728                      10.349529                          5.436839                       23.305727
+17.mp4              2244     7.965189     12.201780            5.076553         18.039383       4.740900        6.887550              3.039121           11.155032                       9.902626                          7.343781                       20.405727
+18.mp4              2241     9.029247     13.941748            5.724258         20.654053       3.693480        5.741971              2.280590            8.442001                      10.398890                          7.415318                       21.813305
+19.mp4              2263     7.580462     11.294466            5.012512         17.574499       2.826211        4.266076              1.880461            6.210408                       8.497370                          6.077960                       18.065928
+ 2.mp4              2258     7.006324      9.978864            4.943031         15.719370       3.550241        5.118979              2.465956            7.916516                       8.284177                          6.572114                       16.979115
+20.mp4              2257     7.399223     11.143337            4.789444         17.679501       3.566120        5.458127              2.225139            8.299127                       8.705041                          6.336080                       18.903023
+ 3.mp4              2252     7.650188     11.670860            4.868729         17.929157       4.252793        6.501529              2.512986           10.144497                       9.348868                          6.757739                       19.606533
+ 4.mp4              2271     8.496778     12.416004            5.749237         19.621552       3.227692        4.892798              1.925169            8.033681                       9.658222                          7.030316                       20.460543
+ 5.mp4              2257     7.464291     10.819233            5.078186         17.316336       2.161396        3.611917              1.280221            4.749632                       8.124609                          5.742077                       17.930962
+ 6.mp4              2257     7.742404     11.203490            5.279556         17.923182       4.112964        5.948765              2.763963            9.335254                       9.173985                          6.921836                       19.370859
+ 7.mp4              2257     7.800074     11.056881            5.369202         18.008917       3.612098        5.696183              2.196068            8.496390                       9.214989                          6.871982                       18.943920
+ 8.mp4              2254     7.319232     10.531491            5.182205         16.563797       3.495905        5.747297              1.990298            8.247281                       8.584681                          6.568054                       17.851694
+ 9.mp4              2253    10.561814     17.290281            6.419037         24.307987       4.343952        6.817212              2.725259            9.699050                      11.771265                          8.201762                       24.919142
+
+5. GENERATED ARTIFACT LOCATIONS
+--------------------------------------------------------------------------------
+- Model File:              D:\ml final project\viewport_lstm_model.keras
+- Training History:        D:\ml final project\lstm_training_history.csv
+- Test Predictions:        D:\ml final project\lstm_test_predictions.csv
+- Training Report:         D:\ml final project\lstm_training_report.txt
+- Per-Video Metrics:       D:\ml final project\lstm_test_metrics_by_video.csv
+- Training Curve Plot:     D:\ml final project\lstm_training_curve.png
+================================================================================
