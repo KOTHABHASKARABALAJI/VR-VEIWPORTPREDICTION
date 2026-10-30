@@ -1,0 +1,33 @@
+================================================================================
+           SELECTED BEST MODEL TEST EVALUATION REPORT
+================================================================================
+Selected Model: Model C — GRU-64
+Selection Criterion: Primary Metric - Validation Mean Spherical Angular Error
+
+1. TEST SET PERFORMANCE METRICS (45,125 Samples)
+--------------------------------------------------------------------------------
+Yaw Metrics (Circular Angle Error):
+- Yaw MAE:                       8.2482 degrees
+- Yaw RMSE:                      12.6100 degrees
+
+Pitch Metrics:
+- Pitch MAE:                     3.6847 degrees
+- Pitch RMSE:                    5.6157 degrees
+
+Spherical Angular Error (Great-Circle Distance):
+- Spherical Mean Error (MAE):     9.5525 degrees
+- Spherical Median Error:         6.8841 degrees
+- Spherical 90th Percentile:      20.0725 degrees
+- Spherical RMSE:                 13.3058 degrees
+
+2. COMPARISON WITH PREVIOUS LSTM REFERENCE RESULT
+--------------------------------------------------------------------------------
+- Reference Test Spherical MAE:  9.5329 degrees (approx. 9.53 degrees)
+- New Selected Model Test MAE:   9.5525 degrees
+- Percentage Improvement vs 9.5329°: -0.21%
+- Percentage Improvement vs 9.53°:   -0.24%
+
+Reference Baseline Details:
+- Previous Yaw MAE:              8.2519 degrees
+- Previous Pitch MAE:            3.6493 degrees
+================================================================================

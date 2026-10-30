@@ -1,0 +1,1178 @@
+====================================================================================================
+  MACHINE LEARNING-BASED VIEWPORT TILE PREDICTION AND ADAPTIVE QUALITY ALLOCATION FOR 360° VIDEO STREAMING
+                       COMPREHENSIVE CODEBASE EXPLANATION, ARCHITECTURE & VIVA GUIDE
+====================================================================================================
+Target Audience: Third-Year Computer Science & Engineering (B.Tech / B.E.) Student
+Project Location: D:\ml final project
+Date of Analysis: October 2026
+Verified Implementation: Python 3, PyTorch, Pandas, NumPy, Matplotlib
+
+
+====================================================================================================
+TABLE OF CONTENTS
+====================================================================================================
+1. SECTION 1: PROJECT OVERVIEW & IMPLEMENTATION WORKFLOW
+   1.1 Problem Statement & Real-World Motivation
+   1.2 End-to-End System Workflow Architecture
+   1.3 Status Matrix: Completed Modules vs. Unfinished / Future Work
+
+2. SECTION 2: LIBRARIES USED (ACCURATELY VERIFIED)
+   2.1 Summary of Directly Imported Libraries
+   2.2 Detailed Entry for Every Imported Library
+   2.3 Clarification on Non-Used / Indirect Libraries
+
+3. SECTION 3: FILE-BY-FILE EXPLANATION
+   3.1 Python Source Code Scripts (6 Files)
+   3.2 Dataset, Analysis, and Output Artifact Files
+
+4. SECTION 4: DATASET AND PREPROCESSING PIPELINE
+   4.1 Dataset Origin and Structure (AVTrack360)
+   4.2 Data Cleaning, Missing Values, and Anomaly Handling
+   4.3 Coordinate Representation: Pitch, Yaw, Roll
+   4.4 The 7 Engineered Input Features
+   4.5 The Sine-Cosine Trigonometric Encoding for Yaw
+   4.6 Sequence Generation: 10-Frame History & 5-Frame Horizon
+   4.7 Feature Normalization (Z-Score Standard Scaling)
+   4.8 Subject-Independent Data Splitting (Preventing Data Leakage)
+   4.9 Feature Engineering vs. Formal Feature Selection
+
+5. SECTION 5: MODEL ARCHITECTURES AND TRAINING
+   5.1 Model Input and Target Tensors
+   5.2 Deep Learning Architectures Compared (LSTM vs. GRU Variants)
+   5.3 Layer Breakdown and Mathematical Operations
+   5.4 Optimizer, Loss Function, and Training Hyperparameters
+   5.5 Early Stopping, Weight Restoration, and Model Persistence
+
+6. SECTION 6: EVALUATION METRICS AND MODEL COMPARISON
+   6.1 Mathematical Formulation of Evaluation Metrics
+   6.2 Great-Circle Spherical Angular Error (Orthodromic Distance)
+   6.3 Validation Set Comparison Results (All 4 Models)
+   6.4 Selected Best Model Performance on Test Set
+   6.5 Comparison with Previous Reference Baseline
+   6.6 Practical Limitations of the Current Evaluation
+
+7. SECTION 7: PROFESSOR'S VIVA QUESTIONS & ANSWERS (30 COMPREHENSIVE QUESTIONS)
+
+
+====================================================================================================
+SECTION 1: PROJECT OVERVIEW & IMPLEMENTATION WORKFLOW
+====================================================================================================
+
+1.1 Problem Statement & Real-World Motivation:
+In standard video streaming, a flat 2D video is displayed on a screen, and the entire video frame is
+visible to the user. In contrast, 360-degree virtual reality (VR) video is captured as an omnidirectional
+spherical panorama (often stored in Equirectangular Projection format, ERP) at ultra-high resolutions
+such as 4K (3840x1920 / 3840x2160) or 8K. 
+
+Streaming an entire 360-degree 4K/8K sphere requires immense network bandwidth (often 50 to 100+ Mbps),
+which strains mobile cellular networks and home broadband. However, when a user wears a Head-Mounted
+Display (HMD) like an HTC Vive or Oculus Quest, human visual biology restricts their Field of View (FoV)
+to only about 90 to 110 degrees diagonally at any single instant. This visible area is called the VIEWPORT.
+
+The user only ever looks at approximately 15% to 20% of the full 360-degree spherical canvas at any
+given millisecond. Transmitting the remaining 80% to 85% of the panorama in full ultra-high quality is
+massively wasteful. 
+
+To solve this problem, modern 360-degree streaming uses TILE-BASED STREAMING:
+1. The 360-degree video frame is chopped spatially into an M x N grid of rectangular tiles.
+2. A machine learning model predicts where the user will rotate their head a short time in advance
+   (e.g., 0.5 seconds ahead).
+3. The streaming system requests and downloads tiles inside the predicted viewport at maximum resolution
+   (high bitrate), while transmitting peripheral/background tiles at low resolution or omitting them.
+4. If the prediction is accurate, the user experiences crisp, crystal-clear VR immersion with zero buffering,
+   while total bandwidth consumption is slashed by 40% to 70%.
+
+The goal of this project codebase is to develop, train, validate, and compare deep recurrent neural networks
+(LSTM and GRU) to predict future head rotation viewports (yaw and pitch orientation) from user motion history.
+
+
+1.2 End-to-End System Workflow Architecture:
+The actual implemented workflow inside this repository follows 8 discrete, sequential stages:
+
+Stage 1: Dataset Acquisition & Download
+- Script: download_src_info.py
+- Action: Automates the HTTP download of 20 video source metadata JSON files (1.json to 20.json) from
+  the public GitHub repository of the AVTrack360 dataset into the local directory 'SRC_info/'.
+
+Stage 2: Video Metadata Extraction
+- Script: extract_video_metadata.py
+- Action: Parses FFprobe stream and format metadata from the 20 downloaded JSON files, extracting
+  width, height, resolution, frame rate, duration, container format, and bitrates into 'video_metadata.csv'.
+
+Stage 3: Raw Viewport Trajectory Harvesting & Ingestion
+- Directory: Head_rotation/ (48 JSON files: 2.json to 49.json)
+- Script: combine_viewport_data.py
+- Action: Reads head tracking logs recorded from 48 human subjects wearing HTC Vive HMDs watching 20 videos.
+  Extracts 284,247 timestamped head rotation records (sec, pitch, yaw, roll) into 'combined_viewport_data.csv'.
+
+Stage 4: Data Validation & Exploratory Movement Dynamics Analysis
+- Scripts: analyze_unique_videos.py, verify_csv.py
+- Artifacts: viewport_data_analysis.txt, viewport_movement_analysis.txt, trajectory_summary.csv,
+  viewport_movement_analysis.csv, unique_videos.csv, viewport_trajectories.csv
+- Action: Identifies 960 discrete trajectories (48 subjects x 20 videos). Discovers that sampling interval is
+  quasi-uniform at ~10 Hz (mean dt = 100.91 ms). Computes angular velocities and accelerations, 360-degree
+  yaw wrap-around frequencies, displacement statistics across time lags (0.1s to 3.0s), and autocorrelation.
+  Concludes that a 1.0-second input history (10 frames) and a 0.5-second prediction horizon (5 frames)
+  provide optimal predictive inertia.
+
+Stage 5: Feature Engineering, Sequence Generation & Disjoint Subject Splitting
+- Artifacts: lstm_train.npz, lstm_validation.npz, lstm_test.npz, lstm_subject_split.csv, lstm_dataset_summary.txt
+- Action: Generates sliding window input sequences of shape (10, 7) and prediction targets (3,).
+  Engineers 7 features: [sin_yaw, cos_yaw, pitch, yaw_vel, pitch_vel, yaw_acc, pitch_acc].
+  Transforms yaw angles into continuous trigonometric coordinates [sin(yaw), cos(yaw)] to eliminate boundary
+  discontinuity. Performs a strictly subject-independent split: 33 subjects (186,176 samples) for training,
+  7 subjects (39,506 samples) for validation, and 8 subjects (45,125 samples) for testing. Computes Z-score
+  normalization strictly on the training set to prevent data leakage.
+
+Stage 6: Multi-Model Architecture Construction & Training
+- Script: compare_models.py
+- Framework: PyTorch (torch, torch.nn)
+- Action: Builds and trains 4 deep recurrent neural network architectures:
+  - Model A: LSTM-64 baseline (1 LSTM layer with 64 units, 1 Dense layer with 32 units, ReLU, Linear output)
+  - Model B: LSTM-128 (1 LSTM layer with 128 units, 1 Dense layer with 32 units, ReLU, Linear output)
+  - Model C: GRU-64 (1 GRU layer with 64 units, 1 Dense layer with 32 units, ReLU, Linear output)
+  - Model D: LSTM with Dropout (1 LSTM layer with 64 units, Dropout p=0.2, 1 Dense layer with 32 units, ReLU, Linear output)
+  All models are trained with Adam optimizer (lr=0.001), Mean Squared Error (MSE) loss, batch size 256,
+  up to 100 epochs, with early stopping (patience=10 epochs monitoring validation loss) and restoring best weights.
+
+Stage 7: Model Comparison & Selection
+- Script: compare_models.py
+- Artifacts: model_comparison.csv, model_comparison_report.txt, model_comparison_training_curves.png,
+  best_viewport_model.keras
+- Action: Compares all 4 models on the validation set using Circular Yaw MAE/RMSE, Pitch MAE/RMSE, and
+  Great-Circle Spherical Angular Error (MAE, median, 90th percentile). Model C (GRU-64) achieves the lowest
+  validation Spherical MAE (9.7289°) and is selected as the winning architecture. Its weights are saved.
+
+Stage 8: Final Independent Test Set Evaluation
+- Script: compare_models.py
+- Artifacts: best_model_test_metrics.txt, best_model_test_predictions.csv
+- Action: Evaluates the winning GRU-64 model on the completely unseen 8 test subjects (45,125 samples).
+  Measures Yaw MAE = 8.2482°, Pitch MAE = 3.6847°, Spherical MAE = 9.5525°, Spherical Median = 6.8841°.
+  Exports frame-by-frame actual vs. predicted coordinates and error distributions.
+
+
+1.3 Status Matrix: Completed Modules vs. Unfinished / Future Work:
+
+[COMPLETED & FULLY IMPLEMENTED WORK]:
+1. Video Source Metadata Extraction (20 videos analyzed via FFprobe JSON streams).
+2. Head Tracking Viewport Ingestion (284,247 samples from 48 users across 20 videos).
+3. Comprehensive Motion Dynamics Analysis (velocity, acceleration, displacement, autocorrelation at 10 Hz).
+4. Circular Angle Trigonometric Feature Engineering (sin/cos representation of yaw, unwrapped derivatives).
+5. 7-Feature Vector Creation (sin_yaw, cos_yaw, pitch, yaw_vel, pitch_vel, yaw_acc, pitch_acc).
+6. Supervised Sequence Windowing (10-frame / 1.0s history -> 5-frame / 0.5s horizon).
+7. Subject-Disjoint Dataset Partitioning (33 train, 7 val, 8 test subjects; zero leakage).
+8. Training-Set-Only Z-Score Normalization (fitted parameters saved in NPZ files).
+9. PyTorch Deep Recurrent Modeling (LSTM-64, LSTM-128, GRU-64, LSTM-Dropout).
+10. Multi-Metric Evaluation Framework (Circular Yaw MAE, Pitch MAE, Great-Circle Spherical Error).
+11. Model Selection & Unseen Test Evaluation (GRU-64 selected; test results documented).
+
+[UNFINISHED / PLANNED FUTURE MODULES]:
+1. Spatial 360° Video Tiling: Dividing equirectangular video frames into spatial grids (e.g., 4x4 or 6x6 tiles).
+2. Viewport-to-Tile Intersection Mapping: A geometric module converting predicted (yaw, pitch) angles into a
+   spherical Field of View cone to calculate which spatial tiles are visible.
+3. Adaptive Bitrate / Quality Allocation Algorithm: A network-aware rate-control algorithm that assigns high
+   bitrates to predicted viewport tiles and lower bitrates to peripheral tiles under bandwidth constraints.
+4. Video Streaming Simulation / Player Integration: DASH/HLS streaming simulation under network bandwidth traces
+   to measure bandwidth savings and Quality of Experience (QoE).
+
+
+====================================================================================================
+SECTION 2: LIBRARIES USED (ACCURATELY VERIFIED FROM SOURCE CODE)
+====================================================================================================
+
+2.1 Summary of Directly Imported Libraries:
+In this codebase, only 10 libraries/modules are directly imported across the 6 Python scripts:
+- Python Standard Library (Built-in, zero pip installation needed):
+  1. pathlib (Path)
+  2. json
+  3. urllib.request
+  4. time
+  5. os
+  6. random
+- Third-Party Python Libraries (Installed via pip):
+  7. pandas (pd)
+  8. numpy (np)
+  9. torch (including torch.nn and torch.utils.data)
+  10. matplotlib.pyplot (plt)
+
+IMPORTANT NOTE FOR VIVA:
+TensorFlow, Keras (the library), Scikit-Learn, and OpenCV are NOT imported in any active Python script.
+The file extension '.keras' used for model saving is purely a naming convention chosen by the author; the
+underlying serialization format is PyTorch's native 'torch.save()' state dictionary archive.
+
+
+2.2 Detailed Entry for Every Imported Library:
+
+----------------------------------------------------------------------------------------------------
+ENTRY 1: pathlib (Standard Library Module)
+----------------------------------------------------------------------------------------------------
+- Library Name: pathlib (Class used: Path)
+- Why Used: Provides object-oriented filesystem paths with cross-platform compatibility (handles Windows
+  backslashes and Linux forward slashes automatically), directory resolution, file globbing, and existence checks.
+- Specific Functions/Classes Used:
+  - Path: Represents a filesystem path.
+  - Path.resolve(): Resolves symlinks and returns the absolute canonical path.
+  - Path.parent: Returns the parent directory containing the file.
+  - Path.exists(): Boolean check whether a file or directory exists.
+  - Path.mkdir(parents=True, exist_ok=True): Creates a directory and any missing parent directories safely.
+  - Path.glob("*.json") / Path.rglob("*.json"): Finds files matching a pattern.
+  - Path.name / Path.stem: Returns filename with extension, or filename stem without extension.
+  - Path.stat().st_size: Returns the file size in bytes.
+- Filenames Where Used:
+  - analyze_unique_videos.py (Lines 1, 4-6, 8, 37, 54-56)
+  - combine_viewport_data.py (Lines 2, 5, 10-11, 14, 18, 73, 108-109, 114)
+  - download_src_info.py (Lines 3, 6-7, 10, 21, 40, 55)
+  - extract_video_metadata.py (Lines 2, 6-8, 11, 16, 18, 76)
+  - verify_csv.py (Lines 1, 4-6, 10, 24-25)
+- What It Does in Our Code: Manages all input and output file paths cleanly without hardcoding rigid paths.
+- Workflow Part: Stage 1 (Data Download), Stage 2 (Metadata Extraction), Stage 3 (Data Ingestion), Stage 4 (Verification).
+- Code Example from Our Code (extract_video_metadata.py, lines 6-8):
+    project_dir = Path(__file__).parent.resolve()
+    src_info_dir = project_dir / "SRC_info"
+    output_csv = project_dir / "video_metadata.csv"
+
+----------------------------------------------------------------------------------------------------
+ENTRY 2: json (Standard Library Module)
+----------------------------------------------------------------------------------------------------
+- Library Name: json
+- Why Used: The raw head rotation trajectory logs from the AVTrack360 dataset and the video source metadata
+  files are stored in JSON (JavaScript Object Notation) format. json parses these nested text files into
+  native Python dictionaries and lists.
+- Specific Functions Used:
+  - json.load(file_object): Deserializes a text file containing JSON data into Python dict/list structures.
+- Filenames Where Used:
+  - combine_viewport_data.py (Lines 1, 29)
+  - extract_video_metadata.py (Lines 1, 23)
+- What It Does in Our Code: Reads the nested structure of Head_rotation/*.json to extract timestamps and
+  orientation angles, and reads SRC_info/*.json to extract FFprobe video stream metadata.
+- Workflow Part: Stage 2 (Video Metadata Extraction) and Stage 3 (Raw Trajectory Harvesting).
+- Code Example from Our Code (combine_viewport_data.py, lines 28-29):
+    with open(json_path, "r", encoding="utf-8") as f:
+        content = json.load(f)
+
+----------------------------------------------------------------------------------------------------
+ENTRY 3: urllib.request (Standard Library Module)
+----------------------------------------------------------------------------------------------------
+- Library Name: urllib.request
+- Why Used: Enables downloading files directly from remote HTTP/HTTPS web servers without installing
+  external packages like requests.
+- Specific Functions/Classes Used:
+  - urllib.request.Request(url, headers): Constructs an HTTP GET request object with custom HTTP headers
+    (specifically User-Agent: Mozilla/5.0 to prevent server blocking).
+  - urllib.request.urlopen(req): Opens network connection to the requested URL.
+  - response.read(): Reads the binary byte stream received from the remote server.
+- Filenames Where Used:
+  - download_src_info.py (Lines 1, 26, 27)
+- What It Does in Our Code: Downloads 20 video metadata JSON files (1.json to 20.json) from the AVTrack360
+  GitHub repository over HTTPS and writes them to the local disk.
+- Workflow Part: Stage 1 (Dataset Acquisition).
+- Code Example from Our Code (download_src_info.py, lines 26-28):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req) as response, open(dest_path, "wb") as out_file:
+        out_file.write(response.read())
+
+----------------------------------------------------------------------------------------------------
+ENTRY 4: time (Standard Library Module)
+----------------------------------------------------------------------------------------------------
+- Library Name: time
+- Why Used: Used for polite rate-limiting delays during web downloads, and high-precision execution timing
+  for neural network training epochs.
+- Specific Functions Used:
+  - time.sleep(seconds): Suspends execution for 0.1 seconds to avoid flooding the GitHub raw file server.
+  - time.time(): Returns the current epoch time in seconds (float) to measure model training duration.
+- Filenames Where Used:
+  - download_src_info.py (Lines 2, 30)
+  - compare_models.py (Lines 2, 192, 235)
+- What It Does in Our Code: Prevents HTTP rate limiting during download, and measures total training time
+  for each neural network architecture.
+- Workflow Part: Stage 1 (Data Download) and Stage 6 (Model Training).
+- Code Example from Our Code (compare_models.py, lines 192, 235):
+    start_time = time.time()
+    # ... training loop ...
+    elapsed_time = time.time() - start_time
+
+----------------------------------------------------------------------------------------------------
+ENTRY 5: os (Standard Library Module)
+----------------------------------------------------------------------------------------------------
+- Library Name: os
+- Why Used: Provides operating-system-dependent functionality.
+- Specific Functions Used:
+  - Imported in compare_models.py (Line 1).
+- Filenames Where Used:
+  - compare_models.py (Line 1)
+- What It Does in Our Code: Standard system utility import.
+- Workflow Part: Stage 6 (Model Training Setup).
+
+----------------------------------------------------------------------------------------------------
+ENTRY 6: random (Standard Library Module)
+----------------------------------------------------------------------------------------------------
+- Library Name: random
+- Why Used: Provides pseudorandom number generators.
+- Specific Functions Used:
+  - random.seed(SEED): Initializes the internal random number generator state with a fixed integer seed (42).
+- Filenames Where Used:
+  - compare_models.py (Lines 3, 13)
+- What It Does in Our Code: Ensures strict reproducibility so that data batch shuffling and weight initializations
+  yield identical results across multiple execution runs.
+- Workflow Part: Stage 6 (Model Training Setup).
+- Code Example from Our Code (compare_models.py, lines 12-13):
+    SEED = 42
+    random.seed(SEED)
+
+----------------------------------------------------------------------------------------------------
+ENTRY 7: pandas (Third-Party Library, 'import pandas as pd')
+----------------------------------------------------------------------------------------------------
+- Library Name: pandas
+- Why Used: The industry-standard tabular data manipulation library in Python. Handles reading CSV files,
+  aggregating, grouping, filtering, calculating descriptive statistics, and exporting structured tables.
+- Specific Functions/Methods Used:
+  - pd.read_csv(path): Loads a CSV file into a DataFrame.
+  - pd.DataFrame(data, columns): Constructs a 2D labeled tabular DataFrame.
+  - DataFrame.groupby(col).size().reset_index(name): Groups rows by column and counts occurrences.
+  - DataFrame.sort_values(by): Sorts rows based on column values.
+  - DataFrame.drop(columns): Removes temporary sorting helper columns.
+  - DataFrame.reset_index(drop=True): Re-indexes the DataFrame sequentially.
+  - DataFrame.apply(func): Applies a transformation function to each element of a Series.
+  - DataFrame.head(n): Returns the first n rows.
+  - DataFrame.to_string(index=False): Formats DataFrame as a clean, readable text table.
+  - DataFrame.to_csv(path, index=False, encoding): Exports DataFrame to CSV on disk.
+  - DataFrame.nunique(dropna=True): Counts number of distinct values in each column.
+  - DataFrame.isna().sum(): Counts missing / NaN values per column.
+  - Series.min() / Series.max(): Finds minimum and maximum values.
+  - pd.set_option(): Adjusts pandas display formatting options for terminal printing.
+- Filenames Where Used:
+  - analyze_unique_videos.py (Lines 2, 14, 19, 26, 27, 33, 36, 50)
+  - combine_viewport_data.py (Lines 3, 5, 69, 72, 87, 88, 89, 90, 93, 98)
+  - extract_video_metadata.py (Lines 3, 72, 75, 82-85, 92, 99)
+  - verify_csv.py (Lines 2, 11, 16, 17, 20)
+  - compare_models.py (Lines 5, 275, 276, 278, 306, 316)
+- What It Does in Our Code: Loads and validates CSV files, structures harvested JSON data into tabular format,
+  computes dataset statistics (e.g., sample counts per video, missing values), formats video metadata tables,
+  and exports prediction error tables and model comparison summaries.
+- Workflow Part: Stage 2 (Metadata Extraction), Stage 3 (Data Ingestion), Stage 4 (Verification), Stage 7 (Comparison).
+- Code Example from Our Code (analyze_unique_videos.py, lines 14, 19):
+    df = pd.read_csv(path)
+    video_counts = df.groupby("video").size().reset_index(name="total_samples")
+
+----------------------------------------------------------------------------------------------------
+ENTRY 8: numpy (Third-Party Library, 'import numpy as np')
+----------------------------------------------------------------------------------------------------
+- Library Name: numpy
+- Why Used: The core numerical computing library in Python. Provides fast N-dimensional array processing,
+  vectorized mathematical operations, trigonometric conversions, linear algebra, and binary NPZ file loading.
+- Specific Functions Used:
+  - np.load(file): Reads binary NumPy archive (.npz) files containing multi-dimensional arrays.
+  - np.random.seed(seed): Seeds NumPy's random number generator for reproducibility.
+  - np.column_stack(list_of_arrays): Stacks 1D arrays horizontally into a 2D matrix.
+  - np.degrees(rad) / np.radians(deg): Converts angles between radians and degrees.
+  - np.arctan2(sin, cos): Computes four-quadrant inverse tangent, returning yaw angles in (-pi, pi].
+  - np.sin(x) / np.cos(x): Computes trigonometric sine and cosine element-wise.
+  - np.abs(x): Computes absolute value element-wise.
+  - np.mean(x): Computes arithmetic mean.
+  - np.sqrt(x): Computes square root.
+  - np.clip(val, min_val, max_val): Clips dot products to [-1.0, 1.0] to prevent math domain errors in arccos.
+  - np.arccos(x): Computes inverse cosine, calculating angular distance on a sphere.
+  - np.median(x): Computes 50th percentile (median) error.
+  - np.percentile(x, q): Computes q-th percentile (e.g., 90th percentile error).
+  - np.round(x, decimals): Rounds floating-point numbers to specified precision.
+  - np.arange(n): Creates a sequential integer index array [0, 1, ..., n-1].
+  - np.vstack(list): Stacks arrays vertically to combine batch prediction tensors.
+- Filenames Where Used:
+  - compare_models.py (Lines 4, 14, 20-22, 35, 115, 116, 121-123, 125-127, 129-136, 138-141, 146, 246, 297, 307, 310-314)
+- What It Does in Our Code: Loads NPZ tensors (X, y, y_deg, norm_mean, norm_std), normalizes target pitch,
+  reconstructs degree angles from predicted sine and cosine using arctan2, un-normalizes pitch, computes
+  circular yaw difference modulo 360, computes great-circle 3D spherical angular error via dot product and arccos,
+  and calculates MAE, RMSE, median, and 90th percentile metrics.
+- Workflow Part: Stage 5 (Dataset Tensors), Stage 6 (Model Training), Stage 7 (Evaluation Metrics).
+- Code Example from Our Code (compare_models.py, lines 115, 134-136):
+    pred_yaw_deg = np.degrees(np.arctan2(pred_sin, pred_cos))
+    dot = np.sin(p1) * np.sin(p2) + np.cos(p1) * np.cos(p2) * np.cos(y1 - y2)
+    dot = np.clip(dot, -1.0, 1.0)
+    sph_err_deg = np.degrees(np.arccos(dot))
+
+----------------------------------------------------------------------------------------------------
+ENTRY 9: torch, torch.nn, torch.utils.data (PyTorch - Third-Party Library)
+----------------------------------------------------------------------------------------------------
+- Library Name: PyTorch (torch)
+- Why Used: The deep learning framework used to define recurrent neural network models, perform automatic
+  differentiation (backpropagation), optimize weights via gradient descent, manage mini-batch DataLoaders,
+  and persist trained weights.
+- Specific Functions/Classes Used:
+  - torch.tensor(data, dtype): Converts NumPy arrays into PyTorch floating-point tensors.
+  - torch.manual_seed(seed): Fixes random seed for CPU tensor initialization and weight generator.
+  - torch.save(obj, filepath): Serializes and saves model state dictionaries to disk.
+  - torch.no_grad(): Context manager that disables gradient calculation during validation and testing,
+    saving memory and speeding up inference.
+  - nn.Module: Base class for all neural network modules.
+  - nn.LSTM(input_size, hidden_size, batch_first=True): Long Short-Term Memory recurrent layer.
+  - nn.GRU(input_size, hidden_size, batch_first=True): Gated Recurrent Unit recurrent layer.
+  - nn.Linear(in_features, out_features): Fully connected (Dense) feed-forward linear layer.
+  - nn.ReLU(): Rectified Linear Unit activation function (f(x) = max(0, x)).
+  - nn.Dropout(p=0.2): Regularization layer randomly zeroing 20% of activations during training to prevent co-adaptation.
+  - nn.MSELoss(): Mean Squared Error loss function: L = (1/N) * sum((y_pred - y_true)^2).
+  - torch.optim.Adam(params, lr=0.001): Adaptive Moment Estimation optimizer with learning rate 0.001.
+  - TensorDataset(X, y): Wraps input and target tensors into an indexed PyTorch Dataset.
+  - DataLoader(dataset, batch_size=256, shuffle): Creates mini-batches, manages iterable streaming, and shuffles data.
+- Filenames Where Used:
+  - compare_models.py (Lines 7, 8, 9, 15, 24-26, 35, 46-48, 50-52, 55, 58-61, 68, 71-74, 81, 84-87, 94, 97-101, 172, 178, 182, 199-203, 211, 227, 238, 243, 286, 294)
+- What It Does in Our Code: Powers the entire machine learning engine: builds the 4 recurrent neural networks
+  (LSTM-64, LSTM-128, GRU-64, LSTM-Dropout), manages mini-batch iterations of 256 samples, computes MSE loss,
+  executes backpropagation (loss.backward()), updates weights (optimizer.step()), monitors validation loss,
+  triggers early stopping after 10 stagnant epochs, and saves model state dictionaries.
+- Workflow Part: Stage 6 (Model Architecture & Training) and Stage 7 (Evaluation & Model Selection).
+- Code Example from Our Code (compare_models.py, lines 55-66, 182):
+    class ModelA_LSTM64(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.lstm = nn.LSTM(7, 64, batch_first=True)
+            self.fc1 = nn.Linear(64, 32)
+            self.relu = nn.ReLU()
+            self.fc2 = nn.Linear(32, 3)
+        def forward(self, x):
+            out, _ = self.lstm(x)
+            out = self.fc1(out[:, -1, :])
+            out = self.relu(out)
+            return self.fc2(out)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+----------------------------------------------------------------------------------------------------
+ENTRY 10: matplotlib.pyplot (Third-Party Library, 'import matplotlib.pyplot as plt')
+----------------------------------------------------------------------------------------------------
+- Library Name: matplotlib (Module: matplotlib.pyplot)
+- Why Used: The premier scientific plotting and visualization library in Python. Creates line graphs,
+  training loss curves, and evaluation charts.
+- Specific Functions Used:
+  - plt.figure(figsize=(12, 6)): Initializes a new canvas of width 12 inches and height 6 inches.
+  - plt.subplot(1, 2, 1) / plt.subplot(1, 2, 2): Creates a 1-row, 2-column grid of subplot axes.
+  - plt.plot(x, y, label, color, linewidth): Plots training and validation loss lines across epochs.
+  - plt.title(text, fontsize, fontweight): Sets the title for the active subplot.
+  - plt.xlabel(text) / plt.ylabel(text): Labels the horizontal and vertical axes.
+  - plt.grid(True, linestyle='--', alpha=0.6): Renders a subtle dashed reference grid.
+  - plt.legend(fontsize=9): Displays the legend associating line colors with model names.
+  - plt.tight_layout(): Automatically adjusts subplot padding to prevent overlapping labels.
+  - plt.savefig(filepath, dpi=300): Exports publication-quality raster image at 300 DPI.
+  - plt.close(): Closes the figure window to free memory.
+- Filenames Where Used:
+  - compare_models.py (Lines 6, 360, 363, 365, 366-370, 372, 374, 375-379, 381, 382, 383)
+- What It Does in Our Code: Visualizes training and validation MSE loss curves across epochs for all 4 models
+  side-by-side, saving the comparison graph to 'model_comparison_training_curves.png'.
+- Workflow Part: Stage 7 (Model Comparison & Reporting).
+- Code Example from Our Code (compare_models.py, lines 360, 365, 382):
+    plt.figure(figsize=(12, 6))
+    plt.plot(range(1, len(hist['train_losses']) + 1), hist['train_losses'], label=f"...", linewidth=1.8)
+    plt.savefig('model_comparison_training_curves.png', dpi=300)
+    plt.close()
+
+
+2.3 Clarification on Non-Used / Indirect Libraries:
+- TensorFlow / Keras: NOT imported. Although files are named 'viewport_lstm_model.keras' and 'best_viewport_model.keras',
+  inspecting the binary ZIP header proves they contain PyTorch's native state dictionary format ('data.pkl', 'data/0', etc.).
+  The author simply chose '.keras' as an arbitrary extension.
+- Scikit-Learn: NOT imported. Z-score normalization and train/validation/test splitting were implemented manually
+  using NumPy indexing and boolean masking rather than sklearn.preprocessing.StandardScaler or train_test_split.
+- OpenCV (cv2): NOT imported. Video frame decoding was not performed because this research focuses on user head
+  movement trajectory dynamics rather than raw pixel visual decoding.
+
+
+====================================================================================================
+SECTION 3: FILE-BY-FILE EXPLANATION
+====================================================================================================
+
+3.1 Python Source Code Scripts (6 Files):
+
+----------------------------------------------------------------------------------------------------
+FILE 1: download_src_info.py
+----------------------------------------------------------------------------------------------------
+- Purpose: Automatically downloads the 20 video source metadata JSON files (1.json to 20.json) from the
+  official GitHub repository of the AVTrack360 dataset and saves them in the local 'SRC_info/' directory.
+- Input Files and Data:
+  - Remote GitHub URL: "https://raw.githubusercontent.com/acmmmsys/2018-AVTrack360/master/AVTrack360_dataset/SRC_info/{i}.json"
+- Output Files and Results:
+  - Local directory: D:\ml final project\SRC_info\
+  - 20 JSON files: 1.json through 20.json (file sizes range from 1,767 bytes to 3,011 bytes).
+- Main Functions:
+  - download_src_info(): Core function orchestrating URL construction, request headers, HTTP download,
+    and post-download file count verification.
+- Important Code Blocks:
+  - User-Agent header specification: Prevents HTTP 403 Forbidden errors from GitHub raw content servers.
+  - Polite delay: 'time.sleep(0.1)' ensures polite network etiquette between successive downloads.
+  - Integrity check: Confirms exactly 20 files exist in the destination directory and reports their byte sizes.
+- Libraries Used: urllib.request, time, pathlib (Path).
+- Connection to Next Stage: The downloaded JSON files in 'SRC_info/' are the direct input required by
+  'extract_video_metadata.py' to generate 'video_metadata.csv'.
+
+----------------------------------------------------------------------------------------------------
+FILE 2: extract_video_metadata.py
+----------------------------------------------------------------------------------------------------
+- Purpose: Parses the 20 downloaded JSON files in 'SRC_info/' to extract video and audio encoding attributes,
+  resolutions, frame rates, and durations, saving a comprehensive metadata catalog into 'video_metadata.csv'.
+- Input Files and Data:
+  - D:\ml final project\SRC_info\1.json through 20.json
+- Output Files and Results:
+  - D:\ml final project\video_metadata.csv (20 rows, 16 columns)
+- Main Functions:
+  - extract_metadata(): Iterates through 1.json to 20.json, extracts stream details, compiles DataFrame,
+    and checks for missing fields.
+- Important Code Blocks:
+  - Video stream lookup: Uses Python's next() with generator expression to find the stream where codec_type == "video".
+  - Audio stream lookup: Finds codec_type == "audio" (and gracefully handles silent videos with None).
+  - Missing field scanner: Verifies data completeness across all 16 extracted metadata attributes.
+- Libraries Used: json, pathlib (Path), pandas (pd).
+- Connection to Next Stage: Establishes ground-truth video parameters (e.g., 30 fps, ~30-second duration, 3840x1920 /
+  3840x2160 resolution) needed to interpret the head tracking timelines.
+
+----------------------------------------------------------------------------------------------------
+FILE 3: combine_viewport_data.py
+----------------------------------------------------------------------------------------------------
+- Purpose: Ingests the 48 raw head rotation tracking JSON files in 'Head_rotation/', parses user orientation
+  records, and consolidates them into a single unified CSV file ('combined_viewport_data.csv').
+- Input Files and Data:
+  - Directory: D:\ml final project\Head_rotation\ (contains 48 files: 2.json to 49.json, each ~1 MB).
+- Output Files and Results:
+  - D:\ml final project\combined_viewport_data.csv (284,247 rows, 6 columns: video, hmd, timestamp, pitch, yaw, roll).
+- Main Functions:
+  - combine_json_to_csv(input_folder, output_csv_path): Reads each JSON file, iterates over viewing sessions,
+    extracts orientation points, constructs a pandas DataFrame, and exports the CSV.
+- Important Code Blocks:
+  - JSON traversal: Navigates root["data"] -> data_item["filename"] (video), data_item["hmd"] ("vive"),
+    and data_item["pitch_yaw_roll_data_hmd"] (list of {pitch, yaw, roll, sec}).
+  - Error isolation: Wraps each file in a try-except block so a single corrupted file cannot abort the entire conversion.
+  - Descriptive statistics summary: Computes and prints row counts, unique video counts, timestamp ranges,
+    and column-wise missing value counts.
+- Libraries Used: json, pathlib (Path), pandas (pd).
+- Connection to Next Stage: Generates the master consolidated dataset analyzed by 'analyze_unique_videos.py'
+  and 'verify_csv.py', and forms the foundation for trajectory segmentation.
+
+----------------------------------------------------------------------------------------------------
+FILE 4: analyze_unique_videos.py
+----------------------------------------------------------------------------------------------------
+- Purpose: Analyzes 'combined_viewport_data.csv' to identify all unique 360-degree videos in the dataset,
+  calculates sample counts per video, and saves a sorted summary table to 'unique_videos.csv'.
+- Input Files and Data:
+  - D:\ml final project\combined_viewport_data.csv
+- Output Files and Results:
+  - D:\ml final project\unique_videos.csv (20 rows: video name and total sample count).
+- Main Functions:
+  - analyze_unique_videos(csv_path, output_csv_path): Loads combined CSV, groups by video, performs natural
+    numerical sorting, and exports summary.
+- Important Code Blocks:
+  - Groupby aggregation: df.groupby("video").size().reset_index(name="total_samples").
+  - Natural sorting helper: Uses split('.')[0] and int() conversion so that '2.mp4' sorts before '10.mp4'
+    instead of standard lexicographical order.
+  - Summary report printing: Outputs formatted row counts, unique video names, and top 10 preview.
+- Libraries Used: pathlib (Path), pandas (pd).
+- Connection to Next Stage: Verifies that all 20 videos have equal representation (~14,140 to 14,300 samples each),
+  confirming that no video is under-sampled or corrupted.
+
+----------------------------------------------------------------------------------------------------
+FILE 5: verify_csv.py
+----------------------------------------------------------------------------------------------------
+- Purpose: Performs a fast sanity check on 'combined_viewport_data.csv' to verify file existence, DataFrame
+  dimensions, column schemas, and data previews.
+- Input Files and Data:
+  - D:\ml final project\combined_viewport_data.csv
+- Output Files and Results:
+  - Console verification report (Shape: (284247, 6), Column names, first 10 rows).
+- Main Functions:
+  - verify_csv(csv_path): Reads CSV and prints structural dimensions.
+- Important Code Blocks:
+  - Shape inspection: df.shape confirms exactly 284,247 rows and 6 columns.
+  - Column schema verification: Confirms ['video', 'hmd', 'timestamp', 'pitch', 'yaw', 'roll'].
+- Libraries Used: pathlib (Path), pandas (pd).
+- Connection to Next Stage: Guarantees that the consolidated CSV was exported without truncation or header errors.
+
+----------------------------------------------------------------------------------------------------
+FILE 6: compare_models.py
+----------------------------------------------------------------------------------------------------
+- Purpose: The flagship machine learning script of the project. Loads the preprocessed NPZ sequence datasets,
+  defines 4 deep recurrent neural network architectures (LSTM-64 baseline, LSTM-128, GRU-64, LSTM-Dropout),
+  trains each model under identical conditions with early stopping, evaluates validation performance using
+  spherical angular error, selects the best model, evaluates it on the test set, and generates all comparison
+  artifacts (tables, plots, reports).
+- Input Files and Data:
+  - lstm_train.npz (186,176 training sequences)
+  - lstm_validation.npz (39,506 validation sequences)
+  - lstm_test.npz (45,125 test sequences)
+- Output Files and Results:
+  - model_comparison.csv: Validation performance table across all 4 models.
+  - best_viewport_model.keras: Serialized PyTorch state dictionary of the winning model (Model C - GRU-64).
+  - best_model_test_metrics.txt: Test set evaluation report for the selected model.
+  - best_model_test_predictions.csv: Test set predictions comparing actual vs. predicted coordinates.
+  - model_comparison_training_curves.png: Side-by-side training and validation MSE loss curves.
+  - model_comparison_report.txt: Comprehensive human-readable report.
+- Main Functions and Classes:
+  - prepare_target(npz_data): Normalizes pitch and stacks [sin(yaw), cos(yaw), norm_pitch] into target tensor.
+  - class ModelA_LSTM64(nn.Module): 1-layer LSTM (64 units) + Dense(32, ReLU) + Dense(3, Linear).
+  - class ModelB_LSTM128(nn.Module): 1-layer LSTM (128 units) + Dense(32, ReLU) + Dense(3, Linear).
+  - class ModelC_GRU64(nn.Module): 1-layer GRU (64 units) + Dense(32, ReLU) + Dense(3, Linear).
+  - class ModelD_LSTMDropout(nn.Module): 1-layer LSTM (64 units) + Dropout(0.2) + Dense(32, ReLU) + Dense(3, Linear).
+  - evaluate_metrics(preds, y_deg_true, norm_mean, norm_std): Reconstructs degree angles via arctan2,
+    un-normalizes pitch, computes circular yaw error, pitch error, and great-circle spherical distance.
+- Important Code Blocks:
+  - Target formulation: y_raw[:, 0] (sin), y_raw[:, 1] (cos), norm_pitch = (pitch - mean) / std.
+  - Great-circle distance calculation: dot = sin(p1)*sin(p2) + cos(p1)*cos(p2)*cos(y1 - y2); sph_err = degrees(arccos(clip(dot))).
+  - Training loop with early stopping: Monitors val_loss, tracks best_epoch, clones best model state_dict,
+    and terminates training when val_loss fails to improve for 10 consecutive epochs.
+  - Model selection logic: best_model_name = min(results.keys(), key=lambda k: results[k]['sph_mae']).
+- Libraries Used: os, time, random, numpy (np), pandas (pd), matplotlib.pyplot (plt), torch, torch.nn (nn),
+  torch.utils.data (TensorDataset, DataLoader).
+- Connection to Next Stage: Concludes the machine learning viewport prediction pipeline, producing the final
+  benchmarked model ready for spatial tile intersection mapping.
+
+
+3.2 Dataset, Analysis, and Output Artifact Files:
+
+1. Head_rotation/ (48 JSON files: 2.json to 49.json):
+   - Raw head tracking logs from 48 human participants watching 20 videos on HTC Vive HMDs.
+2. SRC_info/ (20 JSON files: 1.json to 20.json):
+   - Source video technical metadata downloaded from the AVTrack360 GitHub repository.
+3. combined_viewport_data.csv (284,247 rows):
+   - Consolidated raw tracking dataset containing ['video', 'hmd', 'timestamp', 'pitch', 'yaw', 'roll'].
+4. viewport_trajectories.csv (284,247 rows):
+   - Trajectory dataset with explicit 'subject_id' column: ['subject_id', 'video', 'timestamp', 'pitch', 'yaw', 'roll'].
+5. video_metadata.csv (20 rows):
+   - Video resolutions (3840x1920, 3840x2160), frame rates (30 fps), container format (avi), and bitrates.
+6. unique_videos.csv (20 rows):
+   - Catalog of unique video filenames and sample counts (~14,200 rows per video).
+7. trajectory_summary.csv (960 rows):
+   - Catalog of all 960 trajectories (48 subjects x 20 videos) with duration (~29.8s) and sample count (~296 frames).
+8. viewport_data_analysis.txt:
+   - Comprehensive exploratory analysis of sampling interval (mean dt = 100.91 ms, ~10 Hz), timestamp jitter,
+     and yaw wrap-around transitions (+180° to -180°).
+9. viewport_movement_analysis.csv (960 rows) & viewport_movement_analysis.txt:
+   - Movement dynamics: angular velocity/acceleration percentiles, displacement across intervals (0.5s, 1.0s, 2.0s, 3.0s),
+     and velocity/position autocorrelation.
+10. lstm_subject_split.csv (48 rows):
+    - Subject-to-split mapping (33 subjects in 'train', 7 in 'validation', 8 in 'test').
+11. lstm_train.npz, lstm_validation.npz, lstm_test.npz:
+    - Serialized dataset arrays:
+      - X: shape (N, 10, 7) - normalized 10-step input sequence.
+      - y: shape (N, 3) - [sin(future_yaw), cos(future_yaw), future_pitch_deg].
+      - y_deg: shape (N, 2) - [future_yaw_deg, future_pitch_deg] for direct degree evaluation.
+      - norm_mean: shape (7,) - mean fitted strictly on training split.
+      - norm_std: shape (7,) - standard deviation fitted strictly on training split.
+      - feature_names: ['sin_yaw', 'cos_yaw', 'pitch', 'yaw_vel', 'pitch_vel', 'yaw_acc', 'pitch_acc'].
+      - subject_ids, video_names: sample-level provenance metadata.
+12. lstm_dataset_summary.txt:
+    - Full documentation of dataset splits, boundary sample discarding, and sanity checks.
+13. viewport_lstm_model.keras:
+    - Serialized PyTorch state dictionary of the original LSTM-64 baseline model.
+14. lstm_training_history.csv & lstm_training_report.txt:
+    - Epoch-by-epoch training and validation loss history (19 epochs, best at epoch 9) and test evaluation report.
+15. lstm_test_predictions.csv (45,125 rows):
+    - Predictions from the baseline LSTM model on the test set.
+16. lstm_test_metrics_by_video.csv (20 rows):
+    - Video-by-video breakdown of test set prediction errors for the baseline LSTM.
+17. lstm_training_curve.png:
+    - Training vs. validation loss plot for the baseline LSTM.
+18. best_viewport_model.keras:
+    - Serialized PyTorch state dictionary of the winning GRU-64 model from the comparison experiment.
+19. model_comparison.csv & model_comparison_report.txt:
+    - Validation metrics table and report comparing LSTM-64, LSTM-128, GRU-64, and LSTM-Dropout.
+20. model_comparison_training_curves.png:
+    - Side-by-side training and validation loss curves for all 4 models across epochs.
+21. best_model_test_metrics.txt & best_model_test_predictions.csv:
+    - Final test set evaluation metrics and sample-level predictions for the selected GRU-64 model.
+
+
+====================================================================================================
+SECTION 4: DATASET AND PREPROCESSING PIPELINE
+====================================================================================================
+
+4.1 Dataset Origin and Organization (AVTrack360):
+- Origin: The dataset is drawn from the publicly available AVTrack360 (Audio-Visual Tracking in 360° Video)
+  benchmark dataset published at ACM MMSys 2018.
+- Subjects: Exactly 48 distinct human participants (identified as subjects 2 through 49).
+- Videos: Exactly 20 distinct omnidirectional videos (1.mp4 through 20.mp4), each approximately 30 seconds long.
+- Trajectories: 48 subjects x 20 videos = Exactly 960 unique viewing trajectories.
+- Total Samples: 284,247 raw timestamped orientation data points. Each trajectory contains approximately
+  295 to 297 consecutive samples recorded at ~10 Hz (mean interval = 100.91 ms).
+
+
+4.2 Data Cleaning, Missing Values, and Invalid Data:
+- Missing Values: Zero missing values exist across all columns (video, hmd, timestamp, pitch, yaw, roll).
+  Every record contains complete numerical data.
+- Range Integrity:
+  - Yaw: Strictly in [-180°, +180°] (valid spherical azimuth).
+  - Pitch: Strictly in [-87°, +86°] (valid spherical elevation, within the theoretical [-90°, +90°] limits).
+  - Timestamps: Non-negative, spanning 0.000s to 30.096s.
+- Duplicate Rows: 39 exact duplicate rows were detected in combined_viewport_data.csv. They represent minor
+  sensor recording redundancies and do not disrupt sequential continuity.
+
+
+4.3 Handling Pitch, Yaw, and Roll:
+- Roll: In VR headsets, roll represents lateral tilting of the head towards the shoulders. In normal 360° video
+  viewing, users rarely tilt their heads laterally (mean roll in the dataset is 0.51° with 99% of values
+  between -14° and +15°). Because the center of the viewport is governed entirely by azimuth (yaw) and
+  elevation (pitch), roll does not change the center orientation of the viewport. Therefore, roll is omitted
+  from the predictive model features to reduce dimensionality.
+- Pitch: Represents looking up (positive pitch up to +90°) and looking down (negative pitch down to -90°).
+  Pitch is a bounded linear angle that does not wrap around.
+- Yaw: Represents looking left and right across 360 degrees. Yaw wraps around at -180° and +180°.
+
+
+4.4 The 7 Engineered Input Features:
+For every timestep t, a feature vector of length 7 is constructed:
+Feature 1: sin_yaw   = sin(radians(yaw_t))
+Feature 2: cos_yaw   = cos(radians(yaw_t))
+Feature 3: pitch     = pitch_t (in degrees)
+Feature 4: yaw_vel   = (unwrapped_yaw_t - unwrapped_yaw_{t-1}) / delta_t  (in deg/s)
+Feature 5: pitch_vel = (pitch_t - pitch_{t-1}) / delta_t  (in deg/s)
+Feature 6: yaw_acc   = (yaw_vel_t - yaw_vel_{t-1}) / delta_t  (in deg/s²)
+Feature 7: pitch_acc = (pitch_vel_t - pitch_vel_{t-1}) / delta_t  (in deg/s²)
+
+
+4.5 Why Yaw Uses Sine and Cosine (Trigonometric Encoding):
+In spherical geometry, yaw angle is circular: -180° and +180° describe the EXACT SAME physical orientation
+(looking directly backwards).
+If raw degree values are fed directly to a neural network:
+- A user rotating their head slightly from +179° to -179° makes a tiny physical turn of only 2 degrees.
+- However, as raw numbers, the angle jumps from +179 to -179 — an apparent numeric change of 358!
+- The neural network's loss function (Mean Squared Error) would penalize this jump as an enormous error:
+  (179 - (-179))^2 = 358^2 = 128,164!
+- This causes violent gradient spikes, destabilizes backpropagation, and destroys model convergence.
+
+By encoding yaw as a 2D unit vector on the unit circle:
+- sin(179°) = 0.0175,   cos(179°) = -0.9998
+- sin(-179°) = -0.0175,  cos(-179°) = -0.9998
+The Euclidean distance between these two vectors is tiny (approx 0.035), matching the true physical rotation.
+At prediction time, the model predicts [pred_sin, pred_cos], and the continuous yaw angle is reconstructed
+unambiguously using the four-quadrant inverse tangent:
+  pred_yaw_deg = degrees(arctan2(pred_sin, pred_cos))
+
+
+4.6 Calculation of Velocity and Acceleration:
+When calculating angular velocity, if yaw wraps from +179° to -179° in 0.1s, a naive difference yields:
+  (-179 - 179) / 0.1 = -3580 deg/s (a massive false velocity spike!).
+To solve this, the codebase unwraps the yaw trajectory before computing derivatives:
+  unwrapped_yaw = unwrap(radians(yaw)) * (180 / pi)
+The unwrapping algorithm detects jumps greater than pi (180°) and adds or subtracts multiples of 360° to make
+the trajectory continuous. Then:
+  yaw_vel = d(unwrapped_yaw) / dt
+  yaw_acc = d(yaw_vel) / dt
+
+
+4.7 Sequence Generation: 10-Frame History and 5-Frame Horizon:
+- Input Sequence Length (L = 10 frames):
+  At the dataset's sampling frequency of ~10 Hz (dt = 0.1s), 10 frames represent exactly 1.0 second of history.
+  The autocorrelation analysis proved that head position autocorrelation remains extremely high (r = 0.86 to 0.99)
+  and velocity autocorrelation remains positive (r = 0.26) across 1.0 second. This gives the recurrent network
+  sufficient context to capture movement inertia, acceleration trends, and directional intent without introducing lag.
+- Prediction Horizon (k = 5 frames ahead):
+  5 frames ahead at 10 Hz represents 0.5 seconds into the future. In video streaming, 0.5s corresponds to the
+  typical network segment buffer and download round-trip time (RTT). Predicting 0.5s ahead allows the video player
+  to request the appropriate spatial tiles before the user actually turns their head.
+- Sequence Matrix Generation:
+  For each trajectory of length T:
+  - Input X[i]: frames i to i+9 (shape 10 x 7).
+  - Target y[i]: frame i+14 (0.5s into the future, 5 steps after the last observed frame i+9).
+  - Boundary Protection: No sequence crosses subject or video boundaries. The last 14 frames of each trajectory
+    (9 history + 5 horizon) cannot form a complete sequence, yielding 14 discarded boundary samples per trajectory
+    (14 x 960 = 13,440 discarded samples total).
+  - Total Valid Generated Samples across dataset: 270,807 samples.
+
+
+4.8 Normalization Method (Z-Score Standard Normalization):
+Neural networks train fastest and most reliably when input features have zero mean and unit variance.
+The codebase applies Z-Score Standardization:
+  X_normalized = (X - norm_mean) / norm_std
+CRITICAL RULE TO PREVENT DATA LEAKAGE:
+The normalization parameters (mean and std) were calculated STRICTLY on the training split (33 subjects) only.
+The validation and test sets were scaled using the training set's mean and std:
+  - sin_yaw   : mean = -0.0287, std = 0.6410
+  - cos_yaw   : mean =  0.2772, std = 0.7144
+  - pitch     : mean = -0.0581, std = 18.8304
+  - yaw_vel   : mean =  0.3947, std = 42.1019
+  - pitch_vel : mean =  0.0188, std = 18.9996
+  - yaw_acc   : mean =  0.0533, std = 165.6945
+  - pitch_acc : mean = -0.0083, std = 111.0671
+These parameters are stored inside the NPZ files and used at test time to normalize target pitch and
+un-normalize predictions.
+
+
+4.9 Subject-Independent Data Splitting (Preventing Data Leakage):
+In machine learning, if data points from the same user are placed in both the training set and the test set,
+the model can memorize the user's personal viewing habits (e.g., how fast they tilt their head), leading to
+artificially high accuracy that collapses when tested on a new user in the real world.
+To prevent this, the codebase uses a SUBJECT-INDEPENDENT (disjoint) split:
+- 48 total subjects are partitioned into 3 non-overlapping sets:
+  - Training Set (33 subjects, ~70%): Subjects [2, 3, 5, 6, 7, 8, 10, 11, 13, 14, 15, 17, 18, 19, 21, 23,
+    26, 27, 28, 29, 31, 32, 33, 34, 35, 36, 39, 41, 42, 45, 46, 47, 48] -> 186,176 samples.
+  - Validation Set (7 subjects, ~15%): Subjects [4, 12, 24, 25, 37, 38, 43] -> 39,506 samples.
+  - Test Set (8 subjects, ~15%): Subjects [9, 16, 20, 22, 30, 40, 44, 49] -> 45,125 samples.
+Zero subjects overlap between splits.
+
+
+4.10 Feature Engineering vs. Formal Feature Selection:
+- Feature Engineering: DEFINITELY PERFORMED. Raw head data contained only [pitch, yaw, roll, sec].
+  The codebase engineered 7 sophisticated kinematic features: trigonometric coordinates [sin_yaw, cos_yaw],
+  first-order angular velocities [yaw_vel, pitch_vel], and second-order angular accelerations [yaw_acc, pitch_acc].
+- Formal Feature Selection: NOT PERFORMED. No algorithmic feature selection (such as SelectKBest, Recursive
+  Feature Elimination / RFE, LASSO L1 regularization, VarianceThreshold, or PCA) was executed. All 7 engineered
+  features were retained and passed into the recurrent networks.
+
+
+====================================================================================================
+SECTION 5: MODEL ARCHITECTURES AND TRAINING
+====================================================================================================
+
+5.1 Model Input and Target Shapes:
+- Input Tensor Shape: (Batch_Size, 10, 7)
+  - 10 timesteps of history.
+  - 7 features per timestep.
+- Target Output Tensor Shape: (Batch_Size, 3)
+  - Target vector: [sin(future_yaw), cos(future_yaw), normalized_future_pitch]
+  - Normalization on target pitch: norm_pitch = (pitch_deg - norm_mean[2]) / norm_std[2].
+
+
+5.2 Deep Learning Architectures Compared:
+The codebase implements 4 distinct recurrent model architectures in PyTorch:
+
+----------------------------------------------------------------------------------------------------
+MODEL A — LSTM-64 Baseline:
+----------------------------------------------------------------------------------------------------
+- Layer 1: nn.LSTM(input_size=7, hidden_size=64, batch_first=True)
+  - 64 hidden memory units.
+  - Processes the 10-timestep sequence and outputs hidden states of shape (Batch_Size, 10, 64).
+  - Only the final timestep hidden state out[:, -1, :] of shape (Batch_Size, 64) is passed forward.
+- Layer 2: nn.Linear(in_features=64, out_features=32)
+  - Dense feed-forward projection compressing 64 recurrent features into 32 high-level latent features.
+- Activation: nn.ReLU()
+  - Applies non-linear activation f(x) = max(0, x).
+- Layer 3: nn.Linear(in_features=32, out_features=3)
+  - Output linear layer predicting the 3 continuous values: [pred_sin, pred_cos, pred_norm_pitch].
+- Total Trainable Parameters: 20,835 parameters.
+
+----------------------------------------------------------------------------------------------------
+MODEL B — LSTM-128:
+----------------------------------------------------------------------------------------------------
+- Layer 1: nn.LSTM(input_size=7, hidden_size=128, batch_first=True)
+  - Doubled recurrent capacity (128 units) to test if higher model capacity captures subtler trajectory patterns.
+- Layer 2: nn.Linear(in_features=128, out_features=32)
+- Activation: nn.ReLU()
+- Layer 3: nn.Linear(in_features=32, out_features=3)
+- Total Trainable Parameters: 73,923 parameters.
+
+----------------------------------------------------------------------------------------------------
+MODEL C — GRU-64:
+----------------------------------------------------------------------------------------------------
+- Layer 1: nn.GRU(input_size=7, hidden_size=64, batch_first=True)
+  - Uses Gated Recurrent Units instead of LSTM.
+  - GRU merges the cell state and hidden state, using only 2 gates (Reset Gate and Update Gate) instead
+    of LSTM's 3 gates (Forget, Input, Output).
+- Layer 2: nn.Linear(in_features=64, out_features=32)
+- Activation: nn.ReLU()
+- Layer 3: nn.Linear(in_features=32, out_features=3)
+- Total Trainable Parameters: 16,035 parameters (~23% fewer parameters than LSTM-64, enabling faster inference).
+
+----------------------------------------------------------------------------------------------------
+MODEL D — LSTM with Dropout:
+----------------------------------------------------------------------------------------------------
+- Layer 1: nn.LSTM(input_size=7, hidden_size=64, batch_first=True)
+- Regularization: nn.Dropout(p=0.2)
+  - Randomly zeroes out 20% of the LSTM output activations during training to discourage co-adaptation
+    and test if explicit regularization prevents overfitting.
+- Layer 2: nn.Linear(in_features=64, out_features=32)
+- Activation: nn.ReLU()
+- Layer 3: nn.Linear(in_features=32, out_features=3)
+- Total Trainable Parameters: 20,835 parameters.
+
+
+5.3 Common Training Configuration:
+- Optimizer: Adam (Adaptive Moment Estimation)
+  - Learning Rate: 0.001
+  - Adam computes adaptive learning rates for each parameter using first and second gradient moments.
+- Loss Function: Mean Squared Error (MSE Loss)
+  - L = (1 / 3N) * sum_i [ (pred_sin - true_sin)^2 + (pred_cos - true_cos)^2 + (pred_norm_pitch - true_norm_pitch)^2 ]
+  - Directly minimizes Euclidean distance between predicted and target output vectors.
+- Batch Size: 256 samples per mini-batch.
+- Maximum Epochs: 100 epochs.
+- Early Stopping:
+  - Patience = 10 epochs.
+  - Monitors validation loss at the end of every epoch.
+  - If validation loss does not reach a new minimum for 10 consecutive epochs, training terminates early.
+  - Best Weights Restoration: Clones model.state_dict() at the best epoch and restores these optimal weights
+    at the end of training.
+- Random Seed: SEED = 42 (fixed across Python random, NumPy, and PyTorch for exact reproducibility).
+
+
+5.4 Model Persistence:
+- In compare_models.py (line 286):
+    torch.save(best_metrics['state_dict'], 'best_viewport_model.keras')
+- The state dictionary containing the trained weight tensors of the winning model is saved to disk.
+
+
+====================================================================================================
+SECTION 6: EVALUATION METRICS AND MODEL COMPARISON
+====================================================================================================
+
+6.1 Mathematical Formulation of Evaluation Metrics:
+
+1. Circular Yaw Mean Absolute Error (Yaw MAE):
+   Because yaw wraps around at +/-180°, direct absolute difference |pred - act| produces false errors at the boundary.
+   The circular difference is computed as:
+     yaw_diff = | (pred_yaw - act_yaw + 180) mod 360 - 180 |
+     Yaw MAE = (1 / N) * sum(yaw_diff)
+   Units: Degrees (°).
+
+2. Circular Yaw Root Mean Squared Error (Yaw RMSE):
+     Yaw RMSE = sqrt( (1 / N) * sum(yaw_diff^2) )
+   Penalizes large outlier yaw prediction errors more heavily than MAE.
+
+3. Pitch Mean Absolute Error (Pitch MAE):
+     pitch_diff = | pred_pitch - act_pitch |
+     Pitch MAE = (1 / N) * sum(pitch_diff)
+   Units: Degrees (°).
+
+4. Pitch Root Mean Squared Error (Pitch RMSE):
+     Pitch RMSE = sqrt( (1 / N) * sum(pitch_diff^2) )
+
+
+6.2 Great-Circle Spherical Angular Error (Orthodromic Distance):
+In a 360° VR headset, evaluating yaw and pitch independently is insufficient because a 5° yaw error at the
+equator represents a much larger physical visual displacement than a 5° yaw error near the poles.
+The true physical error between two viewports on the 3D unit sphere is the GREAT-CIRCLE DISTANCE:
+- Let the actual viewport center have pitch p1 and yaw y1 (converted to radians).
+- Let the predicted viewport center have pitch p2 and yaw y2 (converted to radians).
+- In 3D Cartesian coordinates, the unit vectors are:
+    u1 = [cos(p1)*cos(y1),  cos(p1)*sin(y1),  sin(p1)]
+    u2 = [cos(p2)*cos(y2),  cos(p2)*sin(y2),  sin(p2)]
+- Their inner dot product is:
+    dot = u1 · u2 = sin(p1)*sin(p2) + cos(p1)*cos(p2)*cos(y1 - y2)
+- Clipping: dot = clip(dot, -1.0, 1.0) to prevent numerical rounding beyond [-1, 1].
+- Great-Circle Angular Error (degrees):
+    sph_err_deg = degrees( arccos(dot) )
+- Metrics computed on spherical error:
+  - Spherical MAE (Mean Error)
+  - Spherical Median Error (50th percentile)
+  - Spherical 90th Percentile Error (error threshold containing 90% of all predictions)
+  - Spherical RMSE
+
+
+6.3 Validation Set Comparison Results (All 4 Models):
+Evaluated on the 7 validation subjects (39,506 samples):
+
++-----------------------------+-------+----------+----------+---------+----------+-----------+-----------+---------------+
+| Model Name                  | Best  | Training | Val Loss | Yaw MAE | Yaw RMSE | Pitch MAE | Spherical | Spherical     |
+|                             | Epoch | Time (s) | (MSE)    | (deg)   | (deg)    | (deg)     | MAE (deg) | Median (deg)  |
++-----------------------------+-------+----------+----------+---------+----------+-----------+-----------+---------------+
+| Model A — LSTM-64 baseline  |   9   |  98.45s  | 0.053511 | 8.3083° | 12.3209° |  4.1462°  |  9.7504°  |    7.1889°    |
+| Model B — LSTM-128          |   8   | 159.13s  | 0.054109 | 8.3992° | 12.3930° |  4.2508°  |  9.8698°  |    7.3099°    |
+| Model C — GRU-64            |   6   | 105.69s  | 0.053500 | 8.2182° | 12.3028° |  4.2132°  |  9.7289°  |    7.1616°    |
+| Model D — LSTM with Dropout |  21   | 168.99s  | 0.053813 | 8.3085° | 12.3504° |  4.1775°  |  9.7736°  |    7.1778°    |
++-----------------------------+-------+----------+----------+---------+----------+-----------+-----------+---------------+
+
+Selection Analysis:
+- Model C (GRU-64) achieved the LOWEST Validation Spherical MAE (9.7289°) and the LOWEST Validation Loss (0.053500).
+- Model C converged fastest (reached optimal weights at Epoch 6).
+- Model B (LSTM-128) had the worst validation loss (0.054109) and highest error (9.8698°), indicating that doubling
+  recurrent capacity resulted in slight overfitting without any accuracy benefit.
+- Model D (Dropout) required 21 epochs to converge due to activation regularization but did not outperform GRU-64.
+- Decision: MODEL C (GRU-64) was selected as the optimal architecture.
+
+
+6.4 Selected Best Model Performance on Test Set:
+Evaluated on the 8 completely unseen test subjects (45,125 samples):
+- Yaw Metrics:
+  - Yaw MAE: 8.2482 degrees
+  - Yaw RMSE: 12.6100 degrees
+- Pitch Metrics:
+  - Pitch MAE: 3.6847 degrees
+  - Pitch RMSE: 5.6157 degrees
+- Great-Circle Spherical Angular Error:
+  - Spherical Mean Error (MAE): 9.5525 degrees
+  - Spherical Median Error: 6.8841 degrees
+  - Spherical 90th Percentile: 20.0725 degrees
+  - Spherical RMSE: 13.3058 degrees
+
+
+6.5 Comparison with Previous Reference Baseline:
+- Previous Reference LSTM Test Spherical MAE: 9.5329 degrees (~9.53°)
+- New Selected GRU-64 Model Test Spherical MAE: 9.5525 degrees
+- Difference: -0.0196° (-0.21% difference on the test set).
+Why this is a strong result:
+Although the test error is virtually identical (-0.21%), Model C (GRU-64) uses 16,035 parameters compared to
+Model A's 20,835 parameters — a 23.0% reduction in model size and memory footprint. In a real-time VR streaming
+client or edge server, lower parameter count translates to lower latency and faster inference cycles.
+
+
+6.6 Practical Limitations of the Current Evaluation:
+1. Motion-Only Modality: The models rely purely on historical head orientation kinematics. They do not incorporate
+   video visual saliency (e.g., bright objects, moving cars, speaking persons) which attracts human attention over
+   longer horizons (> 1.5 seconds).
+2. Horizon Boundary: Predictions are evaluated at a fixed 0.5-second horizon. Adaptive multi-horizon prediction
+   (e.g., dynamically predicting 0.2s, 0.5s, 1.0s, and 2.0s simultaneously) is not implemented.
+3. Regression Task: Accuracy percentages (e.g., "95% accuracy") are mathematically inapplicable to continuous
+   angular regression tasks; performance must strictly be expressed in angular error (degrees).
+
+
+====================================================================================================
+SECTION 7: PROFESSOR'S VIVA QUESTIONS & ANSWERS
+====================================================================================================
+
+Q1: What is the primary objective of this project?
+Ans: The objective is to predict future viewport orientations (head rotations in yaw and pitch) of users
+watching 360-degree VR videos 0.5 seconds in advance using recurrent deep learning models, enabling tile-based
+adaptive streaming that saves network bandwidth without degrading user visual quality.
+
+Q2: Why is tile-based streaming necessary for 360-degree video?
+Ans: 360-degree video frames are massive (4K or 8K panoramas) requiring 50 to 100+ Mbps bandwidth. However,
+a VR headset user only views a 90° to 110° Field of View (approximately 15% to 20% of the sphere) at any instant.
+Tile-based streaming divides the frame into spatial tiles, downloading only the user's visible tiles in high
+resolution and peripheral tiles in low resolution, cutting bandwidth usage by 40% to 70%.
+
+Q3: Which deep learning framework is actually used in the code?
+Ans: PyTorch (torch, torch.nn, torch.utils.data) is used for all model construction, training, gradient descent,
+and evaluation. Although model checkpoint filenames end in '.keras', inspecting their internal structure confirms
+they are PyTorch serialized state dictionaries loaded with torch.load().
+
+Q4: What libraries are directly imported across your Python scripts?
+Ans: Standard library modules: pathlib, json, urllib.request, time, os, random.
+Third-party libraries: pandas, numpy, torch (including torch.nn and torch.utils.data), and matplotlib.pyplot.
+TensorFlow, Scikit-learn, and OpenCV are NOT directly imported.
+
+Q5: What dataset did you use, and what is its structure?
+Ans: We used the public AVTrack360 benchmark dataset (ACM MMSys 2018). It contains head tracking logs from 48
+human subjects (subjects 2 to 49) watching 20 omnidirectional videos (~30s each) on HTC Vive HMDs, yielding
+960 discrete viewing trajectories and 284,247 timestamped records sampled at ~10 Hz (every ~100 ms).
+
+Q6: What are the input features fed into the model?
+Ans: Exactly 7 engineered kinematic features:
+1. sin_yaw: sin(radians(yaw))
+2. cos_yaw: cos(radians(yaw))
+3. pitch: elevation angle in degrees
+4. yaw_vel: angular velocity of yaw in deg/s (computed on unwrapped yaw)
+5. pitch_vel: angular velocity of pitch in deg/s
+6. yaw_acc: angular acceleration of yaw in deg/s²
+7. pitch_acc: angular acceleration of pitch in deg/s²
+
+Q7: What is the shape of the model's input tensor?
+Ans: The input shape is (Batch_Size, 10, 7), representing 10 historical timesteps (1.0 second at 10 Hz) with
+7 features per timestep.
+
+Q8: What does the model output, and what is the target tensor shape?
+Ans: The target shape is (Batch_Size, 3). The model outputs 3 continuous numbers:
+[sin(future_yaw), cos(future_yaw), normalized_future_pitch], predicting the head orientation 5 frames (0.5s) ahead.
+
+Q9: Why did you omit the 'roll' angle from model inputs?
+Ans: In VR head tracking, roll represents tilting the head sideways toward the shoulders. In 360° video viewing,
+roll is negligible (mean 0.51°, 99% within [-14°, +15°]) and does not alter the center coordinates of the
+directional viewport on the sphere. Omitting roll reduces input dimensionality without losing predictive power.
+
+Q10: Why did you represent yaw as sine and cosine instead of raw degree values?
+Ans: Because yaw is a circular angle with boundary wrap-around at +/-180°. A user turning 2 degrees from +179°
+to -179° creates an artificial jump of 358° in raw numbers, causing massive MSE loss spikes (358^2 = 128,164)
+and destabilizing gradient descent. Encoding yaw as [sin(yaw), cos(yaw)] provides a continuous 2D coordinate on
+the unit circle with zero boundary discontinuity.
+
+Q11: How do you reconstruct the yaw angle in degrees from model predictions?
+Ans: Using the four-quadrant inverse tangent:
+pred_yaw_deg = np.degrees(np.arctan2(pred_sin, pred_cos)), which correctly restores angles in (-180°, +180°].
+
+Q12: Why did you unwrap yaw when calculating velocity and acceleration?
+Ans: When a user crosses the +/-180° boundary, a raw difference between consecutive frames (-179° - 179°)
+produces a false velocity spike of -3580 deg/s. Unwrapping converts circular angles into a continuous monotonic
+curve, allowing true physical derivatives to be computed.
+
+Q13: Why did you choose a 10-frame history window and a 5-frame prediction horizon?
+Ans: Autocorrelation analysis in viewport_movement_analysis.txt showed that head position autocorrelation is
+very high (r > 0.86 to 0.99) and velocity autocorrelation is positive (r = 0.26) within 1.0s (10 frames at 10 Hz).
+10 frames captures velocity trends and acceleration inertia without lag. 5 frames (0.5s ahead) matches the typical
+video streaming buffer and chunk fetch latency.
+
+Q14: How did you partition the dataset into training, validation, and test sets?
+Ans: We performed a subject-independent split across the 48 participants:
+- Training: 33 subjects (~70%, 186,176 samples)
+- Validation: 7 subjects (~15%, 39,506 samples)
+- Test: 8 subjects (~15%, 45,125 samples)
+
+Q15: What is data leakage, and how did you prevent it?
+Ans: Data leakage occurs when information from the test set inadvertently influences model training, yielding
+optimistic but false test scores. We prevented leakage in two ways:
+1. Subject-disjoint splitting: Test subjects were never seen during training, ensuring the model generalizes
+   to new users rather than memorizing individual viewing habits.
+2. Normalization: Z-score mean and std parameters were computed strictly on the training split, never on validation/test.
+
+Q16: Did you perform formal feature selection?
+Ans: No. We performed feature engineering (deriving sine/cosine coordinates, velocities, and accelerations),
+but all 7 engineered features were retained. No statistical or algorithmic feature elimination (like RFE,
+SelectKBest, or PCA) was performed.
+
+Q17: Why did you use Long Short-Term Memory (LSTM) and GRU networks?
+Ans: Human head motion is sequential time-series data with temporal inertia. Feed-forward networks treat frames
+independently and ignore temporal order. Standard RNNs suffer from vanishing gradients. LSTM and GRU contain
+memory cells and gating mechanisms that retain historical motion patterns across sequential timesteps.
+
+Q18: What is the difference between LSTM and GRU in your implementation?
+Ans: LSTM uses 3 gates (Forget, Input, Output) and maintains separate cell and hidden states (20,835 parameters
+in Model A). GRU merges cell and hidden states and uses only 2 gates (Reset and Update), requiring 16,035 parameters
+in Model C — a 23% reduction in parameters, resulting in faster inference.
+
+Q19: What architectures were compared in compare_models.py?
+Ans: Four architectures:
+1. Model A: LSTM-64 (LSTM(64) -> Linear(64->32, ReLU) -> Linear(32->3))
+2. Model B: LSTM-128 (LSTM(128) -> Linear(128->32, ReLU) -> Linear(32->3))
+3. Model C: GRU-64 (GRU(64) -> Linear(64->32, ReLU) -> Linear(32->3))
+4. Model D: LSTM with Dropout (LSTM(64) -> Dropout(0.2) -> Linear(64->32, ReLU) -> Linear(32->3))
+
+Q20: Why did you use Adam optimizer and MSE loss?
+Ans: Adam adaptively adjusts individual learning rates for each weight parameter using momentum, providing
+rapid and stable convergence. MSE (Mean Squared Error) directly penalizes Euclidean distance between predicted
+and target output coordinates on continuous regression targets.
+
+Q21: What was your training configuration (learning rate, batch size, epochs, early stopping)?
+Ans: Learning rate = 0.001, Batch size = 256, Maximum epochs = 100, Early stopping patience = 10 epochs
+monitoring validation loss, with best weight restoration enabled.
+
+Q22: Which model performed best, and why was it selected?
+Ans: Model C (GRU-64) was selected because it achieved the lowest Validation Spherical Mean Absolute Error
+(9.7289°) and lowest validation MSE loss (0.053500) at Epoch 6. It also uses 23% fewer parameters than LSTM-64.
+
+Q23: What results did the selected GRU-64 model achieve on the independent test set?
+Ans: On 45,125 test samples from 8 unseen subjects:
+- Yaw MAE: 8.2482 degrees
+- Pitch MAE: 3.6847 degrees
+- Spherical MAE (Great-Circle): 9.5525 degrees
+- Spherical Median Error: 6.8841 degrees
+- Spherical 90th Percentile Error: 20.0725 degrees
+
+Q24: What is Great-Circle Spherical Angular Error, and why is it used instead of Euclidean error?
+Ans: In 3D VR, a head rotation is an orientation on a unit sphere. A 5° yaw error at the equator covers a much
+larger physical visual distance than a 5° yaw error near the pole. Great-Circle error measures the true orthodromic
+angular distance between the predicted unit vector u1 and actual unit vector u2:
+  error = arccos(u1 · u2) = arccos( sin(p1)*sin(p2) + cos(p1)*cos(p2)*cos(y1 - y2) ).
+
+Q25: Can you report an "accuracy percentage" (e.g., 95%) for this model?
+Ans: No. This is a continuous numerical regression problem predicting 3D angles, not a categorical classification
+problem. In regression, reporting an arbitrary percentage is technically invalid unless a tolerance threshold
+is explicitly defined. Model quality is measured in Mean Absolute Error (degrees).
+
+Q26: How did Model B (LSTM-128) perform compared to Model A (LSTM-64)?
+Ans: Model B performed slightly worse (validation Spherical MAE of 9.8698° vs 9.7504° for Model A). Doubling
+hidden units to 128 increased parameters to 73,923 without improving accuracy, exhibiting slight overfitting.
+
+Q27: How did Model D (Dropout) perform?
+Ans: Model D converged slower (best epoch at 21 vs 9 for Model A) and achieved a validation Spherical MAE of 9.7736°.
+Dropout did not improve performance because the subject-disjoint dataset was already sufficiently large and
+generalized well without heavy regularization.
+
+Q28: Why is pitch MAE (3.68°) significantly lower than yaw MAE (8.25°)?
+Ans: Biomechanically, human head movement is heavily biased toward horizontal exploration (looking left and right)
+rather than vertical neck tilting. The dataset dynamics showed mean pitch velocity is only 10.3°/s compared to
+26.8°/s for yaw, making pitch more static and easier to predict.
+
+Q29: Which parts of the project title are completed, and which parts remain unfinished?
+Ans: Completed: Viewport trajectory analysis, feature engineering, sequence formulation, subject-disjoint splitting,
+and ML-based viewport prediction modeling (LSTM and GRU) with comprehensive spherical evaluation.
+Unfinished: Spatial tiling of the 360° video (dividing frames into tile grids), viewport-to-tile intersection
+mapping, and adaptive quality/bitrate allocation algorithms.
+
+Q30: What are the main limitations of your current implementation?
+Ans:
+1. Motion-only modality: It does not use visual video saliency (objects, faces, movement) to guide predictions.
+2. Fixed horizon: It predicts at a single fixed horizon of 0.5s rather than multi-step horizons.
+3. Tiling and network simulation are not yet integrated end-to-end.
+
+====================================================================================================
+                                      END OF REPORT
+====================================================================================================
