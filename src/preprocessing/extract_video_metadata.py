@@ -35,12 +35,13 @@ def extract_metadata():
     Returns:
         None: Exports 'video_metadata.csv' to the project root and prints summary tables to console.
     """
-    # Dynamically determine the project directory path
-    project_dir = Path(__file__).parent.resolve()
+    # Dynamically determine the project root directory (two levels up from src/preprocessing)
+    project_root = Path(__file__).resolve().parents[2]
 
     # Define paths for the input metadata directory and output consolidated CSV
-    src_info_dir = project_dir / "SRC_info"
-    output_csv = project_dir / "video_metadata.csv"
+    src_info_dir = project_root / "data" / "raw" / "SRC_info"
+    output_csv = project_root / "data" / "processed" / "video_metadata.csv"
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
 
     # Prepare files 1.json to 20.json in strict numerical order (corresponding to videos 1.mp4 through 20.mp4)
     json_files = [src_info_dir / f"{i}.json" for i in range(1, 21)]

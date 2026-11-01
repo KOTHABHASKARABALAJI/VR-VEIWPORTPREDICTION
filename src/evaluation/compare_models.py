@@ -16,7 +16,7 @@ Purpose:
        with Early Stopping (patience=10 epochs, monitoring validation loss) and best-weight restoration.
     6. Evaluates validation performance using circular yaw error, pitch error, and 3D great-circle spherical error.
     7. Selects the winning model based on minimum validation Mean Spherical Error (MAE).
-    8. Serializes the winning model weights to 'best_viewport_model.keras'.
+    8. Serializes the winning model weights to 'best_viewport_model.pth'.
     9. Evaluates the winning model on the unseen test set (45,125 samples across 8 subjects).
     10. Generates comparison tables (model_comparison.csv), prediction logs (best_model_test_predictions.csv),
         metrics reports (best_model_test_metrics.txt, model_comparison_report.txt), and training curves
@@ -35,6 +35,9 @@ import time
 
 # Standard library module for setting pseudorandom seeds
 import random
+
+# Standard library module for object-oriented filesystem paths
+from pathlib import Path
 
 # Third-party numerical computing library for array manipulations, trigonometric operations, and NPZ loading
 import numpy as np
@@ -55,6 +58,24 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 
 # ==============================================================================
+# PROJECT PATH CONFIGURATION
+# ==============================================================================
+# Dynamically determine project root directory (two levels up from src/evaluation)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+SAVED_MODELS_DIR = PROJECT_ROOT / "saved_models"
+RESULTS_METRICS_DIR = PROJECT_ROOT / "results" / "metrics"
+RESULTS_PREDICTIONS_DIR = PROJECT_ROOT / "results" / "predictions"
+RESULTS_PLOTS_DIR = PROJECT_ROOT / "results" / "plots"
+
+# Ensure output directories exist
+SAVED_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_METRICS_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# ==============================================================================
 # REPRODUCIBILITY CONFIGURATION
 # ==============================================================================
 # Fix the random seed across Python, NumPy, and PyTorch to guarantee identical results across runs
@@ -69,9 +90,9 @@ print("=== Starting Model Comparison Experiment ===")
 # STEP 1: LOAD PREPROCESSED DATASET ARRAYS
 # ==============================================================================
 # Load serialized NPZ archives containing supervised sequences and metadata
-train_npz = np.load('lstm_train.npz')       # 186,176 training samples from 33 subjects
-val_npz = np.load('lstm_validation.npz')   # 39,506 validation samples from 7 subjects
-test_npz = np.load('lstm_test.npz')         # 45,125 testing samples from 8 subjects
+train_npz = np.load(DATA_PROCESSED_DIR / 'lstm_train.npz')       # 186,176 training samples from 33 subjects
+val_npz = np.load(DATA_PROCESSED_DIR / 'lstm_validation.npz')   # 39,506 validation samples from 7 subjects
+test_npz = np.load(DATA_PROCESSED_DIR / 'lstm_test.npz')         # 45,125 testing samples from 8 subjects
 
 # Convert input sequences X of shape (N, 10, 7) from NumPy float32 to PyTorch Tensors
 # Dimensions: N samples, 10 historical timesteps (1.0s at 10 Hz), 7 kinematic features per step
@@ -139,136 +160,25 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
 # ==============================================================================
-# STEP 2: DEFINE DEEP LEARNING MODEL ARCHITECTURES
+# STEP 2: LOAD DEEP LEARNING MODEL ARCHITECTURES
 # ==============================================================================
-
-class ModelA_LSTM64(nn.Module):
-    """
-    Model A — Baseline Recurrent Architecture: Single-layer LSTM with 64 hidden units.
-
-    Layers:
-        1. nn.LSTM(7, 64, batch_first=True): Recurrent layer with 64 memory cells.
-        2. nn.Linear(64, 32): Fully connected projection layer reducing 64 features to 32.
-        3. nn.ReLU(): Non-linear activation function f(x) = max(0, x).
-        4. nn.Linear(32, 3): Final regression output layer predicting [sin, cos, norm_pitch].
-
-    Trainable Parameters: 20,835
-    """
-    def __init__(self):
-        super().__init__()
-        # Input size = 7 features, Hidden size = 64 units, batch_first=True makes input (batch, seq, feature)
-        self.lstm = nn.LSTM(7, 64, batch_first=True)
-        # Dense projection layer from LSTM hidden state (64) to latent representation (32)
-        self.fc1 = nn.Linear(64, 32)
-        # Rectified Linear Unit activation
-        self.relu = nn.ReLU()
-        # Output layer producing 3 continuous regression coordinates
-        self.fc2 = nn.Linear(32, 3)
-
-    def forward(self, x):
-        # Pass input sequence through LSTM: out shape is (batch, 10, 64)
-        out, _ = self.lstm(x)
-        # Extract the hidden state of the final timestep (index -1) representing sequence summary
-        out = self.fc1(out[:, -1, :])
-        # Apply non-linear ReLU activation
-        out = self.relu(out)
-        # Produce final 3-element prediction vector
-        return self.fc2(out)
-
-
-class ModelB_LSTM128(nn.Module):
-    """
-    Model B — High-Capacity Architecture: Single-layer LSTM with 128 hidden units.
-
-    Tests whether doubling recurrent capacity to 128 units captures subtler motion trends.
-
-    Layers:
-        1. nn.LSTM(7, 128, batch_first=True): 128 hidden memory units.
-        2. nn.Linear(128, 32): Dense layer projecting 128 recurrent features to 32.
-        3. nn.ReLU(): Non-linear activation function.
-        4. nn.Linear(32, 3): Linear regression output layer.
-
-    Trainable Parameters: 73,923
-    """
-    def __init__(self):
-        super().__init__()
-        # 128 hidden units for increased recurrent representational capacity
-        self.lstm = nn.LSTM(7, 128, batch_first=True)
-        self.fc1 = nn.Linear(128, 32)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(32, 3)
-
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        # Take the final timestep's hidden state (shape: batch, 128)
-        out = self.fc1(out[:, -1, :])
-        out = self.relu(out)
-        return self.fc2(out)
-
-
-class ModelC_GRU64(nn.Module):
-    """
-    Model C — Gated Recurrent Unit Architecture: Single-layer GRU with 64 hidden units.
-
-    GRU simplifies the LSTM architecture by merging cell and hidden states and using only 2 gates
-    (Reset Gate and Update Gate) instead of 3 gates, reducing parameters by ~23% for faster inference.
-
-    Layers:
-        1. nn.GRU(7, 64, batch_first=True): 64 GRU memory units.
-        2. nn.Linear(64, 32): Fully connected layer.
-        3. nn.ReLU(): Non-linear activation function.
-        4. nn.Linear(32, 3): Linear regression output layer.
-
-    Trainable Parameters: 16,035 (~23% fewer than LSTM-64)
-    """
-    def __init__(self):
-        super().__init__()
-        # GRU recurrent layer with 64 units
-        self.gru = nn.GRU(7, 64, batch_first=True)
-        self.fc1 = nn.Linear(64, 32)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(32, 3)
-
-    def forward(self, x):
-        out, _ = self.gru(x)
-        # Take the final timestep's hidden state (shape: batch, 64)
-        out = self.fc1(out[:, -1, :])
-        out = self.relu(out)
-        return self.fc2(out)
-
-
-class ModelD_LSTMDropout(nn.Module):
-    """
-    Model D — Regularized Architecture: LSTM-64 with Dropout (p = 0.2).
-
-    Randomly zeroes out 20% of the LSTM output activations during training to prevent
-    co-adaptation of recurrent features and discourage overfitting.
-
-    Layers:
-        1. nn.LSTM(7, 64, batch_first=True): 64 LSTM memory units.
-        2. nn.Dropout(0.2): Dropout regularization layer (rate = 0.2).
-        3. nn.Linear(64, 32): Fully connected layer.
-        4. nn.ReLU(): Non-linear activation function.
-        5. nn.Linear(32, 3): Linear regression output layer.
-
-    Trainable Parameters: 20,835
-    """
-    def __init__(self):
-        super().__init__()
-        self.lstm = nn.LSTM(7, 64, batch_first=True)
-        # Dropout regularization layer with 20% deactivation probability
-        self.dropout = nn.Dropout(0.2)
-        self.fc1 = nn.Linear(64, 32)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(32, 3)
-
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        # Apply dropout to the final timestep's hidden state before linear projection
-        out = self.dropout(out[:, -1, :])
-        out = self.fc1(out)
-        out = self.relu(out)
-        return self.fc2(out)
+# Import modular recurrent architectures from src.models
+try:
+    from src.models import (
+        ModelA_LSTM64,
+        ModelB_LSTM128,
+        ModelC_GRU64,
+        ModelD_LSTMDropout,
+    )
+except ModuleNotFoundError:
+    import sys
+    sys.path.insert(0, str(PROJECT_ROOT))
+    from src.models import (
+        ModelA_LSTM64,
+        ModelB_LSTM128,
+        ModelC_GRU64,
+        ModelD_LSTMDropout,
+    )
 
 
 # ==============================================================================
@@ -492,7 +402,7 @@ for name, m in results.items():
     })
 
 comparison_df = pd.DataFrame(comparison_rows)
-comparison_df.to_csv('model_comparison.csv', index=False)
+comparison_df.to_csv(RESULTS_METRICS_DIR / 'model_comparison.csv', index=False)
 print("\n=== Model Comparison Table (Validation Set) ===")
 print(comparison_df.to_string(index=False))
 
@@ -506,9 +416,9 @@ best_metrics = results[best_model_name]
 print(f"\nSELECTED BEST MODEL: {best_model_name} with Validation Spherical MAE = {best_metrics['sph_mae']:.4f}°")
 
 # Save selected model weights to disk
-# Note: Filename uses .keras extension by convention, saving PyTorch state dictionary
-torch.save(best_metrics['state_dict'], 'best_viewport_model.keras')
-print("Saved best model state dictionary to best_viewport_model.keras")
+# Save selected model weights to disk as PyTorch state dictionary
+torch.save(best_metrics['state_dict'], SAVED_MODELS_DIR / 'best_viewport_model.pth')
+print(f"Saved best model state dictionary to {SAVED_MODELS_DIR / 'best_viewport_model.pth'}")
 
 
 # ==============================================================================
@@ -546,8 +456,8 @@ test_pred_df = pd.DataFrame({
     'pitch_error_deg': np.round(test_metrics['pitch_diff'], 4),
     'spherical_error_deg': np.round(test_metrics['sph_err_deg'], 4)
 })
-test_pred_df.to_csv('best_model_test_predictions.csv', index=False)
-print("Saved test predictions to best_model_test_predictions.csv")
+test_pred_df.to_csv(RESULTS_PREDICTIONS_DIR / 'best_model_test_predictions.csv', index=False)
+print(f"Saved test predictions to {RESULTS_PREDICTIONS_DIR / 'best_model_test_predictions.csv'}")
 
 
 # ==============================================================================
@@ -588,9 +498,9 @@ Reference Baseline Details:
 ================================================================================
 """
 
-with open('best_model_test_metrics.txt', 'w', encoding='utf-8') as f:
+with open(RESULTS_METRICS_DIR / 'best_model_test_metrics.txt', 'w', encoding='utf-8') as f:
     f.write(test_metrics_content)
-print("Saved test metrics to best_model_test_metrics.txt")
+print(f"Saved test metrics to {RESULTS_METRICS_DIR / 'best_model_test_metrics.txt'}")
 
 
 # ==============================================================================
@@ -627,9 +537,9 @@ plt.grid(True, linestyle='--', alpha=0.6)
 plt.legend(fontsize=9)
 
 plt.tight_layout()
-plt.savefig('model_comparison_training_curves.png', dpi=300)
+plt.savefig(RESULTS_PLOTS_DIR / 'model_comparison_training_curves.png', dpi=300)
 plt.close()
-print("Saved training curves to model_comparison_training_curves.png")
+print(f"Saved training curves to {RESULTS_PLOTS_DIR / 'model_comparison_training_curves.png'}")
 
 
 # ==============================================================================
@@ -770,15 +680,15 @@ Conclusion:
 --------------------------------------------------------------------------------
 1. model_comparison.csv                 : Validation metrics table for all 4 models.
 2. model_comparison_report.txt          : Comprehensive human-readable report.
-3. best_viewport_model.keras            : Saved best model weights.
+3. best_viewport_model.pth              : Saved best model weights (PyTorch state dict).
 4. best_model_test_metrics.txt          : Test evaluation report for the selected model.
 5. best_model_test_predictions.csv      : Frame-by-frame actual vs predicted viewports on test set.
 6. model_comparison_training_curves.png : Loss trajectory plot across training epochs.
 ================================================================================
 """
 
-with open('model_comparison_report.txt', 'w', encoding='utf-8') as f:
+with open(RESULTS_METRICS_DIR / 'model_comparison_report.txt', 'w', encoding='utf-8') as f:
     f.write(report_content)
-print("Saved comparison report to model_comparison_report.txt")
+print(f"Saved comparison report to {RESULTS_METRICS_DIR / 'model_comparison_report.txt'}")
 
 print("\n=== All Steps Completed Successfully ===")

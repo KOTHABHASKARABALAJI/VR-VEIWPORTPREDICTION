@@ -1,0 +1,72 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Testing and profiling caches
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Temporary logs
+*.log
+
+# Git LFS Recommendation Note:
+# Existing processed datasets (*.npz, *.csv) and model weights (*.pth) are retained for reproducibility.
+# If future raw video files (.mp4), extracted equirectangular video frames (.png/.jpg),
+# or very large checkpoints exceeding 50-100 MB are added, track them using Git LFS:
+# git lfs track "*.mp4"
+# git lfs track "*.tar.gz"
+

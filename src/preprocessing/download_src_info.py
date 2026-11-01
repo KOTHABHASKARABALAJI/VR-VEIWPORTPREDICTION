@@ -33,11 +33,11 @@ def download_src_info():
     Returns:
         None: Files are written directly to disk and a summary report is printed to console.
     """
-    # Dynamically determine the project root directory where this script resides
-    project_dir = Path(__file__).parent.resolve()
+    # Dynamically determine the project root directory (two levels up from src/preprocessing)
+    project_root = Path(__file__).resolve().parents[2]
 
     # Define the destination directory for downloaded video source metadata
-    src_info_dir = project_dir / "SRC_info"
+    src_info_dir = project_root / "data" / "raw" / "SRC_info"
     
     # Create the 'SRC_info' folder if it does not already exist
     # 'parents=True' creates intermediate directories if needed; 'exist_ok=True' prevents errors if it exists

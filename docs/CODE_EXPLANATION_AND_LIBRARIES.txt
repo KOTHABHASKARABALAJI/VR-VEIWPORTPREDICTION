@@ -138,7 +138,7 @@ Stage 6: Multi-Model Architecture Construction & Training
 Stage 7: Model Comparison & Selection
 - Script: compare_models.py
 - Artifacts: model_comparison.csv, model_comparison_report.txt, model_comparison_training_curves.png,
-  best_viewport_model.keras
+  best_viewport_model.pth
 - Action: Compares all 4 models on the validation set using Circular Yaw MAE/RMSE, Pitch MAE/RMSE, and
   Great-Circle Spherical Angular Error (MAE, median, 90th percentile). Model C (GRU-64) achieves the lowest
   validation Spherical MAE (9.7289°) and is selected as the winning architecture. Its weights are saved.
@@ -197,8 +197,7 @@ In this codebase, only 10 libraries/modules are directly imported across the 6 P
 
 IMPORTANT NOTE FOR VIVA:
 TensorFlow, Keras (the library), Scikit-Learn, and OpenCV are NOT imported in any active Python script.
-The file extension '.keras' used for model saving is purely a naming convention chosen by the author; the
-underlying serialization format is PyTorch's native 'torch.save()' state dictionary archive.
+The model files in saved_models/ are serialized using PyTorch's native 'torch.save()' state dictionary format (.pth).
 
 
 2.2 Detailed Entry for Every Imported Library:
@@ -465,9 +464,8 @@ ENTRY 10: matplotlib.pyplot (Third-Party Library, 'import matplotlib.pyplot as p
 
 
 2.3 Clarification on Non-Used / Indirect Libraries:
-- TensorFlow / Keras: NOT imported. Although files are named 'viewport_lstm_model.keras' and 'best_viewport_model.keras',
-  inspecting the binary ZIP header proves they contain PyTorch's native state dictionary format ('data.pkl', 'data/0', etc.).
-  The author simply chose '.keras' as an arbitrary extension.
+- TensorFlow / Keras: NOT imported. Files in saved_models/ are PyTorch state dictionaries ('viewport_lstm_model.pth' and 'best_viewport_model.pth').
+  Inspecting the binary ZIP header proves they contain PyTorch's native state dictionary format ('data.pkl', 'data/0', etc.).
 - Scikit-Learn: NOT imported. Z-score normalization and train/validation/test splitting were implemented manually
   using NumPy indexing and boolean masking rather than sklearn.preprocessing.StandardScaler or train_test_split.
 - OpenCV (cv2): NOT imported. Video frame decoding was not performed because this research focuses on user head
@@ -595,7 +593,7 @@ FILE 6: compare_models.py
   - lstm_test.npz (45,125 test sequences)
 - Output Files and Results:
   - model_comparison.csv: Validation performance table across all 4 models.
-  - best_viewport_model.keras: Serialized PyTorch state dictionary of the winning model (Model C - GRU-64).
+  - best_viewport_model.pth: Serialized PyTorch state dictionary of the winning model (Model C - GRU-64).
   - best_model_test_metrics.txt: Test set evaluation report for the selected model.
   - best_model_test_predictions.csv: Test set predictions comparing actual vs. predicted coordinates.
   - model_comparison_training_curves.png: Side-by-side training and validation MSE loss curves.
@@ -655,7 +653,7 @@ FILE 6: compare_models.py
       - subject_ids, video_names: sample-level provenance metadata.
 12. lstm_dataset_summary.txt:
     - Full documentation of dataset splits, boundary sample discarding, and sanity checks.
-13. viewport_lstm_model.keras:
+13. viewport_lstm_model.pth:
     - Serialized PyTorch state dictionary of the original LSTM-64 baseline model.
 14. lstm_training_history.csv & lstm_training_report.txt:
     - Epoch-by-epoch training and validation loss history (19 epochs, best at epoch 9) and test evaluation report.
@@ -665,7 +663,7 @@ FILE 6: compare_models.py
     - Video-by-video breakdown of test set prediction errors for the baseline LSTM.
 17. lstm_training_curve.png:
     - Training vs. validation loss plot for the baseline LSTM.
-18. best_viewport_model.keras:
+18. best_viewport_model.pth:
     - Serialized PyTorch state dictionary of the winning GRU-64 model from the comparison experiment.
 19. model_comparison.csv & model_comparison_report.txt:
     - Validation metrics table and report comparing LSTM-64, LSTM-128, GRU-64, and LSTM-Dropout.
@@ -897,8 +895,8 @@ MODEL D — LSTM with Dropout:
 
 
 5.4 Model Persistence:
-- In compare_models.py (line 286):
-    torch.save(best_metrics['state_dict'], 'best_viewport_model.keras')
+- In compare_models.py:
+    torch.save(best_metrics['state_dict'], 'saved_models/best_viewport_model.pth')
 - The state dictionary containing the trained weight tensors of the winning model is saved to disk.
 
 
@@ -1023,8 +1021,8 @@ resolution and peripheral tiles in low resolution, cutting bandwidth usage by 40
 
 Q3: Which deep learning framework is actually used in the code?
 Ans: PyTorch (torch, torch.nn, torch.utils.data) is used for all model construction, training, gradient descent,
-and evaluation. Although model checkpoint filenames end in '.keras', inspecting their internal structure confirms
-they are PyTorch serialized state dictionaries loaded with torch.load().
+and evaluation. Model checkpoint files in saved_models/ ('best_viewport_model.pth' and 'viewport_lstm_model.pth')
+are PyTorch serialized state dictionaries loaded with torch.load().
 
 Q4: What libraries are directly imported across your Python scripts?
 Ans: Standard library modules: pathlib, json, urllib.request, time, os, random.

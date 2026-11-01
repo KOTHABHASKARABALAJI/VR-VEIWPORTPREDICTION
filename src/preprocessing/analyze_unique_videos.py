@@ -91,12 +91,13 @@ def analyze_unique_videos(csv_path: str | Path, output_csv_path: str | Path):
 
 
 if __name__ == "__main__":
-    # Resolve the project root directory dynamically
-    project_dir = Path(__file__).parent.resolve()
+    # Resolve the project root directory dynamically (two levels up from src/preprocessing)
+    project_root = Path(__file__).resolve().parents[2]
     
     # Define source CSV and target summary CSV paths
-    csv_file = project_dir / "combined_viewport_data.csv"
-    output_file = project_dir / "unique_videos.csv"
+    csv_file = project_root / "data" / "processed" / "combined_viewport_data.csv"
+    output_file = project_root / "data" / "processed" / "unique_videos.csv"
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Execute unique video analysis routine
     analyze_unique_videos(csv_file, output_file)

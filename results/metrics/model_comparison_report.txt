@@ -137,7 +137,7 @@ Conclusion:
 --------------------------------------------------------------------------------
 1. model_comparison.csv                 : Validation metrics table for all 4 models.
 2. model_comparison_report.txt          : Comprehensive human-readable report.
-3. best_viewport_model.keras            : Saved best model weights.
+3. best_viewport_model.pth              : Saved best model weights (PyTorch state dict).
 4. best_model_test_metrics.txt          : Test evaluation report for the selected model.
 5. best_model_test_predictions.csv      : Frame-by-frame actual vs predicted viewports on test set.
 6. model_comparison_training_curves.png : Loss trajectory plot across training epochs.

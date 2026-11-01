@@ -64,11 +64,11 @@ def verify_csv(csv_path: str | Path):
 
 
 if __name__ == "__main__":
-    # Locate the project root directory dynamically relative to this script's location
-    project_dir = Path(__file__).parent.resolve()
+    # Locate the project root directory dynamically (two levels up from src/preprocessing)
+    project_root = Path(__file__).resolve().parents[2]
 
-    # Define the target path to combined_viewport_data.csv in the project directory
-    csv_file = project_dir / "combined_viewport_data.csv"
+    # Define the target path to combined_viewport_data.csv in data/processed/
+    csv_file = project_root / "data" / "processed" / "combined_viewport_data.csv"
 
     # Execute the CSV verification routine
     verify_csv(csv_file)

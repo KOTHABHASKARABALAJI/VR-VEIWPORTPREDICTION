@@ -69,7 +69,7 @@ Combined Spherical Angular Error (Great-Circle Distance):
 
 5. GENERATED ARTIFACT LOCATIONS
 --------------------------------------------------------------------------------
-- Model File:              D:\ml final project\viewport_lstm_model.keras
+- Model File:              saved_models/viewport_lstm_model.pth
 - Training History:        D:\ml final project\lstm_training_history.csv
 - Test Predictions:        D:\ml final project\lstm_test_predictions.csv
 - Training Report:         D:\ml final project\lstm_training_report.txt
