@@ -141,3 +141,82 @@ class ModelD_LSTMDropout(nn.Module):
         out = self.relu(out)
         return self.fc2(out)
 
+
+class ModelE_BiLSTM64(nn.Module):
+    """
+    Model E — Bidirectional LSTM Architecture: BiLSTM with 64 units per direction (128 total).
+
+    Processes the complete past historical sequence in both directions (forward and backward)
+    to capture bidirectional context within the historical window.
+    Strictly preserves temporal causality: only historical frames [t-L+1, ..., t] are processed;
+    future target frames are never accessed.
+
+    Layers:
+        1. nn.LSTM(input_dim, 64, batch_first=True, bidirectional=True): 64 forward + 64 backward cells.
+        2. nn.Linear(128, 32): Projects combined 128-dimensional hidden state to 32 dimensions.
+        3. nn.ReLU(): Non-linear activation.
+        4. nn.Linear(32, 3): Linear regression output layer [sin, cos, norm_pitch].
+
+    Trainable Parameters: 41,315 (for 7 input features)
+    """
+    def __init__(self, input_dim: int = 7, hidden_dim: int = 64):
+        super().__init__()
+        self.bilstm = nn.LSTM(input_dim, hidden_dim, batch_first=True, bidirectional=True)
+        self.fc1 = nn.Linear(hidden_dim * 2, 32)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(32, 3)
+
+    def forward(self, x):
+        out, _ = self.bilstm(x)
+        # Final timestep concatenates forward and backward hidden representations
+        out = self.fc1(out[:, -1, :])
+        out = self.relu(out)
+        return self.fc2(out)
+
+
+class ConfigurableGRU(nn.Module):
+    """
+    Configurable GRU architecture supporting variable input dimension, hidden size, and dropout.
+    Used for controlled feature engineering and hyperparameter tuning experiments.
+    """
+    def __init__(self, input_dim: int = 7, hidden_dim: int = 64, dropout: float = 0.0):
+        super().__init__()
+        self.gru = nn.GRU(input_dim, hidden_dim, batch_first=True)
+        self.dropout = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
+        self.fc1 = nn.Linear(hidden_dim, 32)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(32, 3)
+
+    def forward(self, x):
+        out, _ = self.gru(x)
+        out = self.dropout(out[:, -1, :])
+        out = self.fc1(out)
+        out = self.relu(out)
+        return self.fc2(out)
+
+
+class ConfigurableLSTM(nn.Module):
+    """
+    Configurable LSTM architecture supporting variable input dimension, hidden size, and dropout.
+    """
+    def __init__(self, input_dim: int = 7, hidden_dim: int = 64, dropout: float = 0.0):
+        super().__init__()
+        self.lstm = nn.LSTM(input_dim, hidden_dim, batch_first=True)
+        self.dropout = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
+        self.fc1 = nn.Linear(hidden_dim, 32)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(32, 3)
+
+    def forward(self, x):
+        out, _ = self.lstm(x)
+        out = self.dropout(out[:, -1, :])
+        out = self.fc1(out)
+        out = self.relu(out)
+        return self.fc2(out)
+
+
+# Production and evaluation model aliases
+ViewportGRU = ConfigurableGRU
+ViewportLSTM = ConfigurableLSTM
+
+

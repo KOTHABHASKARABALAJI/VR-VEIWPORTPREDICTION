@@ -1,0 +1,5 @@
+Sequence Length (L),Input Frames,Leaked Val MAE (deg),Leaked Test MAE (deg),Corrected Causal Val MAE (deg),Corrected Causal Test MAE (deg),Leakage Distortion (deg),Status
+L = 5 frames (0.5s),5,5.3416,5.3599,9.6955,9.4655,-4.1056,Corrected (Lookahead Leakage in Original)
+L = 10 frames (1.0s),10,9.6807,9.4669,9.6807,9.4669,0.0,"Verified (Causal npz, Zero Leakage)"
+L = 15 frames (1.5s),15,5.1976,5.2341,9.7018,9.502,-4.2679,Corrected (Lookahead Leakage in Original)
+L = 20 frames (2.0s),20,5.2252,5.2717,9.7101,9.53,-4.2583,Corrected (Lookahead Leakage in Original)

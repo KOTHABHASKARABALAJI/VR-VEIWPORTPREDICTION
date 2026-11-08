@@ -11,6 +11,11 @@ from .architectures import (
     ModelB_LSTM128,
     ModelC_GRU64,
     ModelD_LSTMDropout,
+    ModelE_BiLSTM64,
+    ConfigurableGRU,
+    ConfigurableLSTM,
+    ViewportGRU,
+    ViewportLSTM,
 )
 
 __all__ = [
@@ -18,4 +23,18 @@ __all__ = [
     "ModelB_LSTM128",
     "ModelC_GRU64",
     "ModelD_LSTMDropout",
+    "ModelE_BiLSTM64",
+    "ConfigurableGRU",
+    "ConfigurableLSTM",
+    "ViewportGRU",
+    "ViewportLSTM",
+    "FinalViewportPredictor",
 ]
+
+
+def __getattr__(name: str):
+    if name == "FinalViewportPredictor":
+        from .final_model_inference import FinalViewportPredictor
+        return FinalViewportPredictor
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+

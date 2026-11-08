@@ -10,15 +10,21 @@ Feature engineering module for 360° viewport trajectory prediction:
 from .features import (
     unwrap_yaw_degrees,
     compute_sin_cos_yaw,
+    compute_circular_difference,
     compute_derivatives,
     extract_7_features,
     standardize_features,
+    normalize_pitch,
+    denormalize_pitch,
 )
 
 __all__ = [
     "unwrap_yaw_degrees",
     "compute_sin_cos_yaw",
+    "compute_circular_difference",
     "compute_derivatives",
     "extract_7_features",
     "standardize_features",
+    "normalize_pitch",
+    "denormalize_pitch",
 ]

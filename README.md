@@ -146,24 +146,18 @@ Evaluated on 39,506 validation sequences across 7 unseen subjects (recorded in `
   - **Baseline Model A (LSTM-64):** Achieved Spherical MAE = **9.5329°** (recorded in `results/metrics/lstm_training_report.txt`).
 - **Performance Comparison:** The baseline LSTM-64 model achieved marginally lower test spherical error (**9.5329° vs. 9.5525°**, a slight difference of 0.0196° or ~0.21%). Both models exhibit virtually equivalent generalization on unseen subjects, confirming that single-layer recurrent architectures with 64 units effectively capture 1-second viewport trajectory dynamics without overfitting.
 
-### Final Benchmark Test Results (Selected GRU-64 Model)
-Evaluated on **45,125 completely unseen test samples** across 8 test subjects (from `results/metrics/best_model_test_metrics.txt`):
+### Final Benchmark Test Results (Audited & Retrained Final Model)
+Evaluated on **45,125 completely unseen test samples** across 8 test subjects (recorded in [`results/metrics/final_model_comparison.csv`](file:///d:/ml%20final%20project/results/metrics/final_model_comparison.csv)):
 
-| Metric | Result |
-|---|---|
-| **Spherical Mean Error (MAE)** | **9.5525°** |
-| **Spherical Median Error (50th %)** | **6.8841°** |
-| **Spherical 90th Percentile Error** | **20.0725°** |
-| **Spherical RMSE** | **13.3058°** |
-| **Yaw Mean Absolute Error (MAE)** | **8.2482°** |
-| **Yaw Root Mean Squared Error (RMSE)** | **12.6100°** |
-| **Pitch Mean Absolute Error (MAE)** | **3.6847°** |
-| **Pitch Root Mean Squared Error (RMSE)** | **5.6157°** |
-| Reference Baseline (LSTM-64) Test Spherical MAE | 9.5329° (~9.53°) |
-| Reference Baseline (LSTM-64) Test Yaw MAE | 8.2519° |
-| Reference Baseline (LSTM-64) Test Pitch MAE | 3.6493° |
-| Percentage Difference vs. 9.5329° Reference | -0.21% |
-| Percentage Difference vs. 9.53° Reference | -0.24% |
+| Model / Benchmark | Type | Spherical MAE | Spherical Median | Spherical P90 | Spherical RMSE | Error Reduction vs Persistence |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Persistence Baseline (Last-Known)** | Heuristic | $13.9562^\circ$ | $10.2489^\circ$ | $30.7256^\circ$ | $19.3561^\circ$ | 0.0% (Reference) |
+| **Constant Velocity Extrapolation** | Kinematic | $11.5508^\circ$ | $8.1723^\circ$ | $24.9012^\circ$ | $16.2741^\circ$ | -17.24% |
+| **Model A (LSTM-64 Baseline)** | PyTorch RNN | $9.5329^\circ$ | $6.8843^\circ$ | $20.0261^\circ$ | $13.2654^\circ$ | -31.69% |
+| **Model C (GRU-64 Baseline)** | PyTorch RNN | $9.5525^\circ$ | $6.8841^\circ$ | $20.0725^\circ$ | $13.3058^\circ$ | -31.55% |
+| **FINAL OPTIMAL MODEL (GRU-64, Tuned lr=0.0005)** | **PyTorch RNN (Optimal)** | **9.4828°** | **6.8568°** | **19.9585°** | **13.2186°** | **-32.05%** |
+
+*For full audit evidence, root-cause analyses, and mathematical proofs, see [`docs/model_evaluation/FINAL_MODEL_EVALUATION_REPORT.md`](file:///d:/ml%20final%20project/docs/model_evaluation/FINAL_MODEL_EVALUATION_REPORT.md).*
 
 ---
 
@@ -202,40 +196,56 @@ ml-final-project/
 │   │   └── sequence_generator.py            # Sliding window sequence creation (10-step, 5-horizon)
 │   ├── models/
 │   │   ├── __init__.py                      # Package exports
-│   │   └── architectures.py                 # PyTorch recurrent architectures (LSTM & GRU)
+│   │   ├── architectures.py                 # PyTorch recurrent architectures (LSTM & GRU)
+│   │   ├── train_final_model.py             # Phase 4 final model retraining and evaluation
+│   │   └── final_model_inference.py         # Production-ready streaming inference API
 │   └── evaluation/
 │       ├── __init__.py                      # Package exports
-│       └── compare_models.py                # Multi-model training, early stopping & evaluation
+│       ├── compare_models.py                # Multi-model training, early stopping & evaluation
+│       ├── evaluate_baselines.py            # Phase 1 baseline benchmarks
+│       └── detailed_error_analysis.py       # Phase 2 kinematic & speed error breakdown
+│
+├── tests/
+│   └── test_causal_features.py              # Automated regression test suite (7 causality tests)
 │
 ├── saved_models/
+│   ├── final_viewport_model.pth             # Final optimal model checkpoint (GRU-64, lr=0.0005)
+│   ├── final_model_config.json              # Final model serialization specifications
 │   ├── viewport_lstm_model.pth              # Baseline LSTM-64 state dict (PyTorch native)
 │   └── best_viewport_model.pth              # Winning GRU-64 state dict (PyTorch native)
 │
 ├── results/
 │   ├── metrics/
+│   │   ├── final_model_comparison.csv       # Final benchmark comparison vs baselines
+│   │   ├── final_model_evaluation_metrics.csv # Final optimal model detailed metric breakdown
+│   │   ├── baseline_comparison.csv          # Phase 1 baseline comparisons
 │   │   ├── best_model_test_metrics.txt      # Final evaluation report for selected GRU-64 model
-│   │   ├── model_comparison_report.txt      # Comprehensive comparison report across all 4 models
-│   │   ├── model_comparison.csv             # Validation metrics comparison table
-│   │   ├── lstm_training_report.txt         # Baseline LSTM training report
-│   │   ├── lstm_training_history.csv        # Baseline LSTM epoch-by-epoch loss history
-│   │   ├── lstm_test_metrics_by_video.csv   # Baseline test error breakdown per video
-│   │   ├── viewport_data_analysis.txt       # Exploratory analysis on sampling and jitter
-│   │   ├── viewport_movement_analysis.txt   # Motion dynamics statistics (velocity, acceleration)
-│   │   └── lstm_dataset_summary.txt         # Supervised sequence split documentation
+│   │   └── model_comparison_report.txt      # Comprehensive comparison report across all models
 │   ├── predictions/
-│   │   ├── best_model_test_predictions.csv  # Frame-by-frame actual vs predicted viewports (GRU-64)
-│   │   └── lstm_test_predictions.csv        # Frame-by-frame actual vs predicted viewports (LSTM-64)
-│   └── plots/
-│       ├── model_comparison_training_curves.png  # Training vs validation loss across all 4 models
-│       └── lstm_training_curve.png               # Baseline LSTM loss convergence curve
+│   │   ├── final_model_test_predictions.csv # Test set predictions for final optimal model
+│   │   └── baseline_predictions.csv         # Frame-by-frame actual vs baseline viewports
+│   ├── plots/
+│   │   ├── final_model_loss_curve.png       # Final model loss convergence trajectory
+│   │   ├── final_model_error_cdf.png        # Cumulative error distribution vs baselines
+│   │   └── final_model_vs_baselines_mae.png # Final MAE/Median/P90 error bar benchmark
+│   └── experiments/
+│       └── audit/
+│           ├── phase3_audit_report.md       # Root-cause analysis of sequence-length anomalies
+│           ├── causal_feature_cleanup_report.md # Causal feature engineering verification report
+│           └── multi_horizon_comparison.csv # Comprehensive multi-horizon benchmark
 │
 ├── docs/
-│   ├── CODE_EXPLANATION_AND_LIBRARIES.txt   # Detailed codebase architecture & 30 viva Q&As
-│   └── code_backup_before_commenting/       # Preserved scripts prior to inline documentation
+│   ├── PROJECT_PROGRESS_AND_TECHNICAL_SUMMARY.md # Master consolidated technical summary
+│   ├── REPOSITORY_CLEANUP_REPORT.md             # Repository organization & verification report
+│   ├── project_overview/                        # Architecture & library documentation
+│   ├── dataset/                                 # AVTrack360 specifications & kinematics
+│   ├── model_evaluation/                        # Final model evaluation & progress verification
+│   ├── phase_reports/                           # Phase 1-5 reports & audit investigations
+│   └── archive/                                 # Preserved historical probes & legacy backups
 │
-├── requirements.txt                         # Third-party dependencies
-├── .gitignore                               # Git ignore configuration
-└── README.md                                # Comprehensive repository documentation
+├── requirements.txt                             # Third-party dependencies
+├── .gitignore                                   # Git ignore configuration
+└── README.md                                    # Comprehensive repository documentation
 ```
 
 ---
@@ -319,6 +329,24 @@ The underlying logic for feature computation (unwrapping, velocity, acceleration
 Loads the preprocessed sequence tensors from `data/processed/`, trains all 4 recurrent architectures (`ModelA_LSTM64`, `ModelB_LSTM128`, `ModelC_GRU64`, `ModelD_LSTMDropout` from `src/models/architectures.py`) with early stopping, compares validation metrics, saves the winning model state dictionary to `saved_models/`, and generates comparison tables, test predictions, metrics reports, and training curves:
 ```bash
 python src/evaluation/compare_models.py
+```
+
+### Step 6: Retrain and Evaluate the Audited Final Model
+Retrains the optimal final configuration (`ConfigurableGRU`, $L=10$, $k=5$, 7 causal features, $lr=0.0005$, batch=256) on the verified causal pipeline, saves the final checkpoint to `saved_models/final_viewport_model.pth` and `saved_models/final_model_config.json`, and benchmarks against all baselines:
+```bash
+python src/models/train_final_model.py
+```
+
+### Step 7: Test Standalone Streaming Inference
+Demonstrates the standalone production inference API (`FinalViewportPredictor`) consuming 10 historical frames to predict the viewport 0.5s into the future:
+```bash
+python src/models/final_model_inference.py
+```
+
+### Step 8: Run Automated Causal Feature Regression Tests
+Executes the automated test suite verifying strict causality, prefix invariance, wrap-around protection, and streaming equivalence:
+```bash
+python -m unittest discover tests
 ```
 
 ---
