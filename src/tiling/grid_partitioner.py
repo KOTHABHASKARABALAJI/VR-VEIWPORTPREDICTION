@@ -11,6 +11,10 @@ Provides:
 - Solid angle (steradian) computation accounting for equirectangular latitude compression.
 - Point-to-tile and pixel-to-spherical bidirectional projection mappings.
 - Circular boundary wrap-around topological neighbor lookup.
+- Documentation of polar singularity: At exact poles (+/-90° pitch), yaw longitude is
+  mathematically degenerate (all longitudes converge). In ERP 2D projection, latitude +90°
+  corresponds to the top canvas line y=0 and latitude -90° corresponds to the bottom canvas line y=H.
+  Points at poles are partitioned according to their nominal azimuth column.
 """
 
 from dataclasses import dataclass
@@ -52,16 +56,25 @@ class TileGridPartitioner:
         num_rows: int = 4,
         num_cols: int = 6
     ):
+        if isinstance(frame_width, bool) or not isinstance(frame_width, int) or frame_width <= 0:
+            raise ValueError(f"frame_width must be a positive integer, got {frame_width}")
+        if isinstance(frame_height, bool) or not isinstance(frame_height, int) or frame_height <= 0:
+            raise ValueError(f"frame_height must be a positive integer, got {frame_height}")
+        if isinstance(num_rows, bool) or not isinstance(num_rows, int) or num_rows <= 0:
+            raise ValueError(f"num_rows must be a positive integer, got {num_rows}")
+        if isinstance(num_cols, bool) or not isinstance(num_cols, int) or num_cols <= 0:
+            raise ValueError(f"num_cols must be a positive integer, got {num_cols}")
+
+        if frame_width % num_cols != 0:
+            raise ValueError(f"Width {frame_width} must be divisible by {num_cols} cols.")
+        if frame_height % num_rows != 0:
+            raise ValueError(f"Height {frame_height} must be divisible by {num_rows} rows.")
+
         self.frame_width = int(frame_width)
         self.frame_height = int(frame_height)
         self.num_rows = int(num_rows)
         self.num_cols = int(num_cols)
         self.total_tiles = self.num_rows * self.num_cols
-
-        if self.frame_width % self.num_cols != 0:
-            raise ValueError(f"Width {self.frame_width} must be divisible by {self.num_cols} cols.")
-        if self.frame_height % self.num_rows != 0:
-            raise ValueError(f"Height {self.frame_height} must be divisible by {self.num_rows} rows.")
 
         self.tile_width = self.frame_width // self.num_cols    # 640 px
         self.tile_height = self.frame_height // self.num_rows  # 480 px
@@ -124,18 +137,28 @@ class TileGridPartitioner:
 
     def get_tile(self, tile_id: int) -> TileSpec:
         """Retrieves metadata and bounding boxes for a given tile ID."""
-        if tile_id not in self.tiles:
-            raise KeyError(f"Invalid tile_id {tile_id}. Must be in [0, {self.total_tiles - 1}].")
+        if not isinstance(tile_id, int) or isinstance(tile_id, bool) or tile_id not in self.tiles:
+            raise KeyError(f"Invalid tile_id {tile_id}. Must be integer in [0, {self.total_tiles - 1}].")
         return self.tiles[tile_id]
 
     def spherical_to_pixel(self, yaw_deg: float, pitch_deg: float) -> Tuple[float, float]:
         """
         Maps continuous spherical angles (yaw in [-180, 180], pitch in [-90, 90])
         to continuous ERP canvas pixel coordinates (x in [0, W], y in [0, H]).
+
+        Note on Polar Singularity:
+            At exact poles (pitch = +/-90°), all longitudes converge. On the 2D ERP canvas,
+            pitch=+90° maps to the top boundary y=0, and pitch=-90° maps to y=H.
+            Yaw is normalized into [-180, 180) to determine column position.
         """
+        if isinstance(yaw_deg, bool) or not np.isfinite(float(yaw_deg)):
+            raise ValueError(f"Invalid yaw_deg: {yaw_deg}")
+        if isinstance(pitch_deg, bool) or not np.isfinite(float(pitch_deg)):
+            raise ValueError(f"Invalid pitch_deg: {pitch_deg}")
+
         # Wrap yaw into [-180, +180)
-        norm_yaw = ((yaw_deg + 180.0) % 360.0) - 180.0
-        pitch_clamped = np.clip(pitch_deg, -90.0, 90.0)
+        norm_yaw = ((float(yaw_deg) + 180.0) % 360.0) - 180.0
+        pitch_clamped = float(np.clip(float(pitch_deg), -90.0, 90.0))
 
         # X: longitude -180 -> 0, +180 -> frame_width
         x = (norm_yaw + 180.0) / 360.0 * self.frame_width
@@ -148,8 +171,13 @@ class TileGridPartitioner:
         """
         Maps continuous ERP pixel coordinates to spherical angles (yaw, pitch).
         """
-        x_clamped = np.clip(x, 0.0, self.frame_width)
-        y_clamped = np.clip(y, 0.0, self.frame_height)
+        if isinstance(x, bool) or not np.isfinite(float(x)):
+            raise ValueError(f"Invalid x coordinate: {x}")
+        if isinstance(y, bool) or not np.isfinite(float(y)):
+            raise ValueError(f"Invalid y coordinate: {y}")
+
+        x_clamped = float(np.clip(float(x), 0.0, self.frame_width))
+        y_clamped = float(np.clip(float(y), 0.0, self.frame_height))
 
         yaw = (x_clamped / self.frame_width) * 360.0 - 180.0
         pitch = 90.0 - (y_clamped / self.frame_height) * 180.0
@@ -167,8 +195,13 @@ class TileGridPartitioner:
         """
         Finds the unique tile containing the given pixel (x, y).
         """
-        col = int(x // self.tile_width)
-        row = int(y // self.tile_height)
+        if isinstance(x, bool) or not np.isfinite(float(x)):
+            raise ValueError(f"Invalid x pixel: {x}")
+        if isinstance(y, bool) or not np.isfinite(float(y)):
+            raise ValueError(f"Invalid y pixel: {y}")
+
+        col = int(float(x) // self.tile_width)
+        row = int(float(y) // self.tile_height)
 
         # Handle boundary edges
         col = min(max(col, 0), self.num_cols - 1)
@@ -185,7 +218,6 @@ class TileGridPartitioner:
         r, c = spec.row, spec.col
         neighbors = []
 
-        # Row offsets (-1, 0, +1), Col offsets (-1, 0, +1)
         offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         if include_diagonals:
             offsets.extend([(-1, -1), (-1, 1), (1, -1), (1, 1)])
@@ -225,4 +257,3 @@ class TileGridPartitioner:
 if __name__ == "__main__":
     grid = TileGridPartitioner()
     print(grid.summary())
-

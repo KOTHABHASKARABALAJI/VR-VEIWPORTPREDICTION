@@ -1,5 +1,5 @@
 """
-Unit tests for 360° video spatial grid tiling and viewport mapping:
+Unit tests for 360° video spatial grid tiling, polar coordinates, and viewport mapping:
 - tests/test_tiling.py
 """
 
@@ -19,6 +19,15 @@ class TestTileGridPartitioner(unittest.TestCase):
         self.assertEqual(self.grid.tile_width, 640)
         self.assertEqual(self.grid.tile_height, 480)
 
+    def test_invalid_parameters_rejected(self):
+        """Invalid dimensions, negative values, and non-divisible dimensions must raise ValueError."""
+        with self.assertRaises(ValueError):
+            TileGridPartitioner(frame_width=3841, frame_height=1920)
+        with self.assertRaises(ValueError):
+            TileGridPartitioner(frame_width=3840, frame_height=1920, num_rows=0)
+        with self.assertRaises(ValueError):
+            TileGridPartitioner(frame_width=3840, frame_height=1920, num_cols=-6)
+
     def test_solid_angle_sum(self):
         """Sum of all 24 tile solid angles must equal total sphere area (4*pi steradians)."""
         total_sa = sum(t.solid_angle_sr for t in self.grid.tiles.values())
@@ -33,10 +42,17 @@ class TestTileGridPartitioner(unittest.TestCase):
             self.assertAlmostEqual(yaw, ryaw, delta=0.5)
             self.assertAlmostEqual(pitch, rpitch, delta=0.5)
 
+    def test_polar_singularity_mapping(self):
+        """At exact poles (+90° and -90° pitch), pixel Y must be clamped to boundaries (0 and frame_height)."""
+        px_top, py_top = self.grid.spherical_to_pixel(0.0, 90.0)
+        self.assertEqual(py_top, 0.0)
+
+        px_bot, py_bot = self.grid.spherical_to_pixel(0.0, -90.0)
+        self.assertEqual(py_bot, float(self.grid.frame_height))
+
     def test_circular_neighbors(self):
         """Column 0 (-180°) must wrap to Column 5 (+180°)."""
         tile_0_neighbors = self.grid.get_adjacent_tiles(0, include_diagonals=False)
-        # Tile 0 is row 0, col 0. Right neighbor is 1, Bottom is 6, Left wrap is 5
         self.assertIn(1, tile_0_neighbors)
         self.assertIn(5, tile_0_neighbors)
         self.assertIn(6, tile_0_neighbors)
@@ -47,12 +63,25 @@ class TestViewportMapper(unittest.TestCase):
         self.grid = TileGridPartitioner()
         self.mapper = ViewportMapper(grid_partitioner=self.grid, hfov_deg=100.0, vfov_deg=100.0)
 
+    def test_invalid_fov_rejected(self):
+        """FoV <= 0 or >= 180 or boolean must raise ValueError."""
+        with self.assertRaises(ValueError):
+            ViewportMapper(hfov_deg=0.0)
+        with self.assertRaises(ValueError):
+            ViewportMapper(hfov_deg=180.0)
+        with self.assertRaises(ValueError):
+            ViewportMapper(vfov_deg=-10.0)
+        with self.assertRaises(ValueError):
+            ViewportMapper(hfov_deg=True)
+
     def test_intersection_weights_sum_to_one(self):
         """Sum of fractional ray weights across active tiles must equal 1.0."""
         inter = self.mapper.get_viewport_intersection(0.0, 0.0)
         total_weight = sum(inter.tile_weights.values())
         self.assertAlmostEqual(total_weight, 1.0, places=5)
         self.assertIn(inter.primary_tile, inter.active_tiles)
+        for w in inter.tile_weights.values():
+            self.assertGreaterEqual(w, 0.0)
 
     def test_perfect_prediction_recall(self):
         """When predicted viewport equals ground truth, recall and coverage must be 1.0."""
@@ -61,7 +90,15 @@ class TestViewportMapper(unittest.TestCase):
         self.assertAlmostEqual(res["tile_precision"], 1.0, places=5)
         self.assertAlmostEqual(res["viewport_coverage"], 1.0, places=5)
 
+    def test_sampling_sensitivity_experiment(self):
+        """Ray sampling sensitivity experiment must execute and report stability across resolutions."""
+        df_sens = ViewportMapper.run_sampling_sensitivity_experiment(resolutions=[21, 41])
+        self.assertFalse(df_sens.empty)
+        self.assertIn("max_weight_diff_vs_21x21", df_sens.columns)
+        # Weight difference between 21x21 and 41x41 should be small (< 0.05)
+        max_diff = df_sens["max_weight_diff_vs_21x21"].max()
+        self.assertLess(max_diff, 0.05)
+
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -1,6 +1,15 @@
 {
     "model_name": "final_viewport_model",
     "project_title": "Machine Learning-Based Viewport Tile Prediction and Adaptive Quality Allocation for 360 Video Streaming",
+    "reproducibility": {
+        "random_seed": 42,
+        "deterministic_algorithms_enabled": true,
+        "python_version": "3.14.2 (tags/v3.14.2:df79316, Dec  5 2025, 17:18:21) [MSC v.1944 64 bit (AMD64)]",
+        "torch_version": "2.14.0+cpu",
+        "numpy_version": "2.4.4",
+        "os_platform": "Windows-11-10.0.26300-SP0",
+        "cpu_architecture": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel"
+    },
     "architecture": {
         "type": "ConfigurableGRU",
         "input_dim": 7,
@@ -38,30 +47,31 @@
             "causal backward yaw acceleration (deg/s^2)",
             "causal backward pitch acceleration (deg/s^2)"
         ],
-        "causal_difference_type": "backward difference",
+        "causal_difference_type": "strictly causal backward difference",
+        "acceleration_boundary_policy": "acc[0]=0.0, acc[1]=0.0 (no unobserved velocity prior to t=0)",
         "angular_wrap_handling": "shortest circular difference on [-180, 180]"
     },
     "normalization": {
         "mean": [
-            -0.02867160364985466,
-            0.27722254395484924,
-            -0.05810147523880005,
-            0.39470380544662476,
-            0.018788643181324005,
-            0.053254082798957825,
-            -0.008266787976026535
+            -0.0286746546626091,
+            0.2771476209163666,
+            -0.0578530915081501,
+            0.3946141004562378,
+            0.018700171262025833,
+            0.056758977472782135,
+            -0.013718456029891968
         ],
         "std": [
-            0.6410027742385864,
-            0.7143501043319702,
-            18.83042335510254,
-            42.10187530517578,
-            18.999614715576172,
-            165.69451904296875,
-            111.06710815429688
+            0.641038179397583,
+            0.7144564390182495,
+            18.831768035888672,
+            42.105464935302734,
+            19.001449584960938,
+            165.63604736328125,
+            111.04169464111328
         ],
-        "pitch_mean": -0.05810147523880005,
-        "pitch_std": 18.83042335510254,
+        "pitch_mean": -0.057951394468545914,
+        "pitch_std": 18.997299194335938,
         "fitted_on": "training_set_only (33 subjects)"
     },
     "training_hyperparameters": {
@@ -71,8 +81,8 @@
         "loss_function": "MSELoss",
         "max_epochs": 20,
         "patience": 5,
-        "best_epoch": 17,
-        "training_duration_s": 129.02,
+        "best_epoch": 18,
+        "training_duration_s": 132.99,
         "early_stopping_metric": "validation_loss_mse"
     },
     "subject_split": {
@@ -132,14 +142,15 @@
         ]
     },
     "evaluation_metrics": {
-        "test_spherical_mae_deg": 9.482776641845703,
-        "test_spherical_median_deg": 6.856809139251709,
-        "test_spherical_p90_deg": 19.958484649658203,
-        "test_spherical_rmse_deg": 13.218581199645996,
-        "test_yaw_mae_deg": 8.179352760314941,
-        "test_pitch_mae_deg": 3.6459550857543945,
-        "improvement_over_persistence_pct": 32.05347046624845,
-        "improvement_over_const_vel_pct": 17.90392969835836,
-        "inference_latency_us": 272.75859999645036
+        "test_spherical_mae_deg": 9.445351398293854,
+        "test_spherical_median_deg": 6.805364705860768,
+        "test_spherical_p90_deg": 19.932967653654725,
+        "test_spherical_rmse_deg": 13.194852287166697,
+        "test_yaw_mae_deg": 8.165392875671387,
+        "test_pitch_mae_deg": 3.642819404602051,
+        "improvement_over_persistence_pct": 32.324038069378744,
+        "improvement_over_const_vel_pct": 18.265838407174048,
+        "inference_latency_mean_us": 271.6733008273877,
+        "inference_latency_median_us": 249.70003869384527
     }
 }

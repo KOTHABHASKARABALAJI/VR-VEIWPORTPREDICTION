@@ -1,28 +1,7 @@
-Metric,Value,Unit,Description
-Model Architecture,ConfigurableGRU,-,Single-layer Gated Recurrent Unit (hidden_dim=64) + Linear(32) + ReLU + Linear(3)
-Parameter Count,16195,parameters,Total trainable PyTorch weights and biases
-Model Disk Size,66.9,KB,Serialized state dictionary file size on disk
-History Sequence Length (L),10,frames,Historical observation window (1.0091 seconds at ~9.91 Hz)
-Prediction Horizon (k),5,frames,Lookahead lead time (~0.50455 seconds)
-Input Features Count,7,features,"[sin_yaw, cos_yaw, pitch, yaw_vel, pitch_vel, yaw_acc, pitch_acc]"
-Feature Difference Mode,Causal Backward,-,Strictly causal backward difference with shortest circular yaw wrap
-Sampling Rate,~9.91,Hz,Mean inter-frame interval dt = 0.10091s
-Optimizer,Adam,-,Learning rate = 0.0005 with default beta1=0.9 and beta2=0.999
-Batch Size,256,samples,Mini-batch size during training
-Loss Function,MSELoss,-,Mean Squared Error on [sin(yaw), cos(yaw), norm_pitch]
-Best Training Epoch,17,epochs,Epoch achieving lowest validation loss before early stopping
-Best Validation Loss (MSE),0.053563,MSE,Validation coordinate MSE loss
-Validation Spherical MAE,9.6698,degrees,Orthodromic great-circle mean absolute error on 7 validation subjects
-Test Spherical MAE,9.4828,degrees,Orthodromic great-circle mean absolute error on 8 disjoint test subjects
-Test Spherical Median,6.8568,degrees,50th percentile great-circle angular error on test set
-Test Spherical P90,19.9585,degrees,90th percentile great-circle angular error on test set
-Test Spherical RMSE,13.2186,degrees,Root mean square great-circle error on test set
-Test Yaw MAE,8.1794,degrees,Circular yaw mean absolute error on test set
-Test Pitch MAE,3.6460,degrees,Pitch mean absolute error on test set
-Improvement vs. Persistence,+32.05,%,Error reduction relative to Persistence Baseline (13.9562 deg)
-Improvement vs. Constant Velocity,+17.90,%,Error reduction relative to Constant Velocity Baseline (11.5508 deg)
-Improvement vs. Model A (LSTM-64),+0.53,%,Error reduction relative to original LSTM-64 baseline (9.5329 deg)
-Improvement vs. Model C (GRU-64),+0.73,%,Error reduction relative to original GRU-64 baseline (9.5525 deg)
-Inference Latency,272.76,microseconds,Mean inference runtime per sequence on CPU
-Evaluation Sample Count,45125,samples,Total evaluation sequences across 8 disjoint test subjects
-
+Metric,Value_deg
+Spherical MAE,9.445351398293854
+Spherical Median,6.805364705860768
+Spherical P90,19.932967653654725
+Spherical RMSE,13.194852287166697
+Yaw MAE,8.165392875671387
+Pitch MAE,3.642819404602051

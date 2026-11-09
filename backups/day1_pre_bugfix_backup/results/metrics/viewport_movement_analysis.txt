@@ -1,0 +1,174 @@
+================================================================================
+              VIEWPORT MOVEMENT DYNAMICS ANALYSIS REPORT
+               Dataset: viewport_trajectories.csv (AVTrack360)
+================================================================================
+
+1. YAW ANGULAR VELOCITY (°/s)
+--------------------------------------------------------------------------------
+- Minimum:              0.0000 deg/s
+- Maximum:              841.5842 deg/s
+- Mean:                 26.8443 deg/s
+- Median (50th %):      19.8020 deg/s
+- Standard Deviation:   32.2096 deg/s
+- Percentiles:
+  - 25th Percentile:    9.9010 deg/s
+  - 75th Percentile:    39.6040 deg/s
+  - 90th Percentile:    69.3069 deg/s
+  - 95th Percentile:    89.1089 deg/s
+  - 99th Percentile:    148.5149 deg/s
+
+2. PITCH ANGULAR VELOCITY (°/s)
+--------------------------------------------------------------------------------
+- Minimum:              0.0000 deg/s
+- Maximum:              267.3267 deg/s
+- Mean:                 10.3422 deg/s
+- Median (50th %):      9.9010 deg/s
+- Standard Deviation:   15.6790 deg/s
+- Percentiles:
+  - 25th Percentile:    0.0000 deg/s
+  - 75th Percentile:    10.0000 deg/s
+  - 90th Percentile:    29.7030 deg/s
+  - 95th Percentile:    40.0000 deg/s
+  - 99th Percentile:    70.0000 deg/s
+
+3. YAW ANGULAR ACCELERATION (°/s²)
+--------------------------------------------------------------------------------
+- Minimum:              0.0000 deg/s²
+- Maximum:              6175.8651 deg/s²
+- Mean:                 104.0926 deg/s²
+- Median (50th %):      98.0296 deg/s²
+- Standard Deviation:   130.1661 deg/s²
+- Percentiles:
+  - 25th Percentile:    1.9606 deg/s²
+  - 75th Percentile:    102.9703 deg/s²
+  - 90th Percentile:    204.9505 deg/s²
+  - 95th Percentile:    304.9505 deg/s²
+  - 99th Percentile:    600.0000 deg/s²
+
+4. PITCH ANGULAR ACCELERATION (°/s²)
+--------------------------------------------------------------------------------
+- Minimum:              0.0000 deg/s²
+- Maximum:              1692.1145 deg/s²
+- Mean:                 69.8771 deg/s²
+- Median (50th %):      96.0690 deg/s²
+- Standard Deviation:   85.7059 deg/s²
+- Percentiles:
+  - 25th Percentile:    0.0000 deg/s²
+  - 75th Percentile:    99.9902 deg/s²
+  - 90th Percentile:    196.0396 deg/s²
+  - 95th Percentile:    200.0000 deg/s²
+  - 99th Percentile:    394.0594 deg/s²
+
+5-8. COMBINED SPEED AND ACCELERATION DISTRIBUTIONS
+--------------------------------------------------------------------------------
+Overall 2D Speed (sqrt(yaw_vel^2 + pitch_vel^2)):
+- Mean Speed:           31.7829 deg/s
+- Median Speed:         22.1393 deg/s
+- 75th Percentile Speed:42.0063 deg/s
+- 90th Percentile Speed:70.7107 deg/s
+- 95th Percentile Speed:94.3398 deg/s
+- 99th Percentile Speed:152.9706 deg/s
+- Maximum Speed:        841.6424 deg/s
+
+9. PERCENTAGE OF SAMPLES WITH LOW, MEDIUM, AND HIGH HEAD MOVEMENT
+--------------------------------------------------------------------------------
+Classified by Overall 2D Angular Speed:
+- Low Movement    (< 15 deg/s):   40.33% (Fixations & smooth pursuit)
+- Medium Movement (15-60 deg/s):  44.43% (Moderate head exploration)
+- High Movement   (> 60 deg/s):   15.25% (Fast head turns / saccades)
+
+Component Breakdown:
+- Yaw Movement:   Low (<15): 47.18% | Med (15-60): 41.60% | High (>60): 11.21%
+- Pitch Movement: Low (<15): 78.13% | Med (15-60): 20.10% | High (>60): 1.77%
+
+10. FREQUENCY OF SUDDEN YAW CHANGES
+--------------------------------------------------------------------------------
+- Yaw velocity > 60 deg/s:     11.21% of samples
+- Yaw velocity > 100 deg/s:    3.45% of samples
+- Yaw acceleration > 200 deg/s²: 12.77% of samples
+- Yaw acceleration > 500 deg/s²: 1.77% of samples
+
+11. FREQUENCY OF SUDDEN PITCH CHANGES
+--------------------------------------------------------------------------------
+- Pitch velocity > 60 deg/s:   1.77% of samples
+- Pitch velocity > 100 deg/s:  0.27% of samples
+- Pitch acceleration > 200 deg/s²: 5.02% of samples
+- Pitch acceleration > 500 deg/s²: 0.34% of samples
+
+12. FREQUENCY OF YAW WRAP-AROUND EVENTS
+--------------------------------------------------------------------------------
+- Total wrap-around events across dataset: 1204
+- Average wrap-arounds per trajectory:     1.25
+- Trajectories containing wrap-arounds:     451 / 960 (46.98%)
+- Max wrap-arounds in a single trajectory:  13
+
+13. TYPICAL MOVEMENT OVER TIME INTERVALS (DISPLACEMENT)
+--------------------------------------------------------------------------------
+Interval: 0.5 seconds (5 time steps):
+- Total Displacement: Mean = 15.17°, Median = 11.40°, 75% = 21.21°, 95% = 43.00°, Max = 183.33°
+- Yaw Displacement:   Mean = 13.10°, Median = 9.00°, 95% = 41.00°
+- Pitch Displacement: Mean = 4.77°, Median = 2.00°, 95% = 18.00°
+
+Interval: 1.0 seconds (10 time steps):
+- Total Displacement: Mean = 28.22°, Median = 22.80°, 75% = 39.81°, 95% = 75.16°, Max = 282.09°
+- Yaw Displacement:   Mean = 24.76°, Median = 18.00°, 95% = 73.00°
+- Pitch Displacement: Mean = 8.36°, Median = 4.00°, 95% = 31.00°
+
+Interval: 2.0 seconds (20 time steps):
+- Total Displacement: Mean = 48.37°, Median = 40.20°, 75% = 68.18°, 95% = 123.12°, Max = 344.52°
+- Yaw Displacement:   Mean = 43.71°, Median = 34.00°, 95% = 121.00°
+- Pitch Displacement: Mean = 12.51°, Median = 7.00°, 95% = 43.00°
+
+Interval: 3.0 seconds (30 time steps):
+- Total Displacement: Mean = 63.11°, Median = 52.50°, 75% = 89.81°, 95% = 158.15°, Max = 377.00°
+- Yaw Displacement:   Mean = 58.20°, Median = 46.00°, 95% = 156.00°
+- Pitch Displacement: Mean = 14.40°, Median = 8.00°, 95% = 48.00°
+
+14. AUTOCORRELATION ANALYSIS ACROSS TIME LAGS
+--------------------------------------------------------------------------------
+Lag 1  (0.1s): Yaw Vel AC = 0.9090 | Pitch Vel AC = 0.7418 | Yaw Pos AC = 0.9978 | Pitch Pos AC = 0.9897
+Lag 2  (0.2s): Yaw Vel AC = 0.7894 | Pitch Vel AC = 0.5854 | Yaw Pos AC = 0.9916 | Pitch Pos AC = 0.9647
+Lag 3  (0.3s): Yaw Vel AC = 0.6669 | Pitch Vel AC = 0.4308 | Yaw Pos AC = 0.9820 | Pitch Pos AC = 0.9284
+Lag 5  (0.5s): Yaw Vel AC = 0.4913 | Pitch Vel AC = 0.2175 | Yaw Pos AC = 0.9552 | Pitch Pos AC = 0.8348
+Lag 10 (1.0s): Yaw Vel AC = 0.2602 | Pitch Vel AC = -0.0423 | Yaw Pos AC = 0.8610 | Pitch Pos AC = 0.5679
+Lag 15 (1.5s): Yaw Vel AC = 0.1334 | Pitch Vel AC = -0.1083 | Yaw Pos AC = 0.7483 | Pitch Pos AC = 0.3438
+Lag 20 (2.0s): Yaw Vel AC = 0.0572 | Pitch Vel AC = -0.1111 | Yaw Pos AC = 0.6317 | Pitch Pos AC = 0.1848
+Lag 30 (3.0s): Yaw Vel AC = -0.0290 | Pitch Vel AC = -0.0760 | Yaw Pos AC = 0.4100 | Pitch Pos AC = 0.0061
+
+15. PREDICTABILITY OF RECENT MOVEMENT FOR NEAR-FUTURE MOVEMENT
+--------------------------------------------------------------------------------
+A. Directional Persistence (Same rotational sign in past 1.0s vs future horizon):
+- Horizon 0.5s (5 steps):  69.26% directional agreement
+- Horizon 1.0s (10 steps): 66.35% directional agreement
+- Horizon 2.0s (20 steps): 60.84% directional agreement
+
+B. Velocity Inertia (Correlation between past 1.0s velocity and future velocity):
+- Horizon 0.5s: Yaw Velocity Correlation = 0.5053
+- Horizon 1.0s: Yaw Velocity Correlation = 0.4146
+- Horizon 2.0s: Yaw Velocity Correlation = 0.2825
+
+C. Baseline Constant-Velocity Linear Extrapolation Prediction Error (MAE in degrees):
+- Horizon 0.5s: Mean Error = 15.00° | Median Error = 10.76° | 90th % Error = 32.82°
+- Horizon 1.0s: Mean Error = 31.56° | Median Error = 23.76° | 90th % Error = 68.47°
+- Horizon 2.0s: Mean Error = 65.71° | Median Error = 51.10° | 90th % Error = 139.11°
+- Horizon 3.0s: Mean Error = 99.81° | Median Error = 79.44° | 90th % Error = 209.23°
+
+Key Insight on Predictability:
+- Short-term movement (0.5s to 1.0s) exhibits high inertia and strong velocity autocorrelation (r = 0.49 to 0.91), making past 0.5s-1.0s movement highly predictive for near-future viewport positions.
+- Beyond 1.5s - 2.0s, velocity autocorrelation drops significantly (< 0.13), and linear extrapolation error grows rapidly from 15.0° (at 0.5s) to 65.7° (at 2.0s) and 99.8° (at 3.0s), demonstrating that non-linear ML models or content-aware models will be required for long prediction horizons.
+
+16. RECOMMENDED INPUT HISTORY & PREDICTION HORIZONS FOR MODELING
+--------------------------------------------------------------------------------
+Based strictly on the observed empirical dynamics:
+
+1. Recommended Input History Window(s):
+   - Primary Recommendation: 1.0 second (10 historical frames at 10 Hz)
+     - Rationale: High position autocorrelation (r = 0.99) and positive velocity correlation (r = 0.26) peak within 1.0s. It captures sufficient velocity and acceleration dynamics without adding excessive lag.
+   - Secondary / Extended Recommendation: 2.0 seconds (20 historical frames)
+     - Rationale: Useful for capturing broader macro head sweeps and movement acceleration context.
+
+2. Recommended Prediction Horizon(s):
+   - Short-term Horizon:  0.5 seconds (5 steps ahead) -> High predictability baseline (MAE ~15° linear error). Ideal for ultra-low latency tile streaming.
+   - Mid-term Horizon:    1.0 second to 1.5 seconds (10-15 steps ahead) -> Moderate predictability (MAE ~31° linear error), represents standard network buffer window for 360° video streaming.
+   - Long-term Horizon:   2.0 seconds to 3.0 seconds (20-30 steps ahead) -> High challenge horizon (MAE ~65° to ~100° linear error), where simple extrapolations fail and content saliency / deep models become necessary.
+================================================================================

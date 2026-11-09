@@ -103,7 +103,7 @@ D:\ml final project/
 ├── saved_models/                          # PyTorch checkpoints (.pth) & model configs
 │   ├── best_viewport_model.pth            # Phase 1 baseline checkpoint (9.5525°)
 │   ├── final_model_config.json            # Final production hyperparameter configuration
-│   ├── final_viewport_model.pth           # Retrained causal production model (9.7088°)
+│   ├── final_viewport_model.pth           # Retrained causal production model (9.4828° Test MAE, 9.6698° Val MAE)
 │   └── viewport_lstm_model.pth            # Phase 1 initial LSTM checkpoint
 ├── src/
 │   ├── dataset_generation/                # Trajectory parsing & train/val/test splitting
@@ -158,7 +158,7 @@ D:\ml final project/
 ### 3.4 Critical Files Strictly Preserved
 | Critical Asset | File Path | Status |
 |:---|:---|:---|
-| Final Production Model Checkpoint | `saved_models/final_viewport_model.pth` | Intact (64 hidden units, strictly causal, 9.7088° MAE) |
+| Final Production Model Checkpoint | `saved_models/final_viewport_model.pth` | Intact (64 hidden units, strictly causal, 9.4828° Test MAE, 9.6698° Val MAE) |
 | Production Configuration | `saved_models/final_model_config.json` | Intact ($L=10$, $k=5$, 7 features, pitch mean/std) |
 | Baseline Checkpoint | `saved_models/best_viewport_model.pth` | Intact (Phase 1 baseline checkpoint, 9.5525° MAE) |
 | Initial LSTM Checkpoint | `saved_models/viewport_lstm_model.pth` | Intact (Phase 1 reference weights) |

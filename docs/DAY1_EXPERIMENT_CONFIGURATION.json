@@ -1,0 +1,213 @@
+{
+  "experiment_metadata": {
+    "title": "Machine Learning-Based Viewport Tile Prediction and Adaptive Quality Allocation for 360° Video Streaming",
+    "phase": "Day 1 Complete Technical Bug Fix and Validation",
+    "timestamp_iso": "2026-11-08T21:20:00+05:30",
+    "reproducibility": {
+      "random_seed": 42,
+      "python_hash_seed": 42,
+      "torch_deterministic_algorithms": true,
+      "python_version": "3.14.2",
+      "torch_version": "2.14.0+cpu",
+      "numpy_version": "2.4.4",
+      "platform": "Windows-11-AMD64"
+    }
+  },
+  "dataset_specifications": {
+    "source_dataset": "AVTrack360",
+    "raw_trajectory_file": "data/processed/viewport_trajectories.csv",
+    "raw_rows_total": 284247,
+    "cleaned_rows_total": 284213,
+    "calibration_duplicates_deduplicated": 34,
+    "trajectory_count": 960,
+    "subject_count_total": 48,
+    "sampling_frequency_nominal_hz": 9.91,
+    "mean_sampling_interval_dt_s": 0.10091,
+    "min_sampling_interval_dt_s": 0.00200,
+    "max_sampling_interval_dt_s": 0.43300,
+    "sequence_history_length_L": 10,
+    "sequence_history_duration_s": 1.0091,
+    "prediction_horizon_k": 5,
+    "prediction_lead_time_s": 0.50455,
+    "sample_counts": {
+      "train": 186156,
+      "validation": 39496,
+      "test": 45121,
+      "total": 270773
+    },
+    "subject_split": {
+      "train": [2, 3, 5, 6, 7, 8, 10, 11, 13, 14, 15, 17, 18, 19, 21, 23, 26, 27, 28, 29, 31, 32, 33, 34, 35, 36, 39, 41, 42, 45, 46, 47, 48],
+      "validation": [4, 12, 24, 25, 37, 38, 43],
+      "test": [9, 16, 20, 22, 30, 40, 44, 49],
+      "subject_leakage_percentage": 0.0
+    }
+  },
+  "feature_engineering": {
+    "feature_count": 7,
+    "feature_names": [
+      "sin_yaw",
+      "cos_yaw",
+      "pitch",
+      "yaw_vel",
+      "pitch_vel",
+      "yaw_acc",
+      "pitch_acc"
+    ],
+    "velocity_formulation": "causal backward difference: (pos[t] - pos[t-1]) / dt[t]",
+    "acceleration_boundary_policy": "a[0] = 0.0, a[1] = 0.0 (computed for t >= 2)",
+    "circular_wrap_handling": "shortest circular arc: ((diff + 180) % 360) - 180",
+    "normalization_statistics_fitted_on": "training_set_only",
+    "norm_mean": [
+      -0.0286746546626091,
+      0.2771476209163666,
+      -0.0578530915081501,
+      0.3946141004562378,
+      0.018700171262025833,
+      0.056758977472782135,
+      -0.013718456029891968
+    ],
+    "norm_std": [
+      0.641038179397583,
+      0.7144564390182495,
+      18.831768035888672,
+      42.105464935302734,
+      19.001449584960938,
+      165.63604736328125,
+      111.04169464111328
+    ],
+    "pitch_mean": -0.057951394468545914,
+    "pitch_std": 18.997299194335938
+  },
+  "model_architecture": {
+    "model_name": "ConfigurableGRU",
+    "framework": "PyTorch",
+    "input_dimension": 7,
+    "hidden_dimension": 64,
+    "projection_dimension": 32,
+    "output_dimension": 3,
+    "dropout": 0.0,
+    "trainable_parameters": 16195,
+    "checkpoint_path": "saved_models/final_viewport_model.pth",
+    "checkpoint_size_kb": 66.94
+  },
+  "training_parameters": {
+    "optimizer": "Adam",
+    "learning_rate": 0.0005,
+    "batch_size": 256,
+    "loss_criterion": "MSELoss",
+    "max_epochs": 20,
+    "early_stopping_patience": 5,
+    "best_epoch": 18,
+    "best_validation_loss": 0.052574,
+    "training_wall_time_s": 132.99
+  },
+  "benchmark_metrics": {
+    "persistence_baseline": {
+      "spherical_mae_deg": 13.9567,
+      "spherical_median_deg": 10.2489,
+      "spherical_p90_deg": 30.7285,
+      "spherical_rmse_deg": 19.3567,
+      "yaw_mae_deg": 12.6233,
+      "pitch_mae_deg": 4.3373,
+      "mean_latency_us": 3.67,
+      "median_latency_us": 3.60
+    },
+    "constant_velocity_baseline": {
+      "spherical_mae_deg": 11.5562,
+      "spherical_median_deg": 8.1762,
+      "spherical_p90_deg": 24.9077,
+      "spherical_rmse_deg": 16.2863,
+      "yaw_mae_deg": 9.6968,
+      "pitch_mae_deg": 4.8763,
+      "mean_latency_us": 11.63,
+      "median_latency_us": 11.60
+    },
+    "model_a_lstm64_baseline": {
+      "spherical_mae_deg": 9.5304,
+      "spherical_median_deg": 6.8771,
+      "spherical_p90_deg": 20.0353,
+      "spherical_rmse_deg": 13.2655,
+      "yaw_mae_deg": 8.2524,
+      "pitch_mae_deg": 3.6508,
+      "mean_latency_us": 322.26,
+      "median_latency_us": 284.85
+    },
+    "model_c_gru64_baseline": {
+      "spherical_mae_deg": 9.5474,
+      "spherical_median_deg": 6.8809,
+      "spherical_p90_deg": 20.0800,
+      "spherical_rmse_deg": 13.3048,
+      "yaw_mae_deg": 8.2484,
+      "pitch_mae_deg": 3.6830,
+      "mean_latency_us": 290.56,
+      "median_latency_us": 242.90
+    },
+    "final_optimal_model_gru64": {
+      "spherical_mae_deg": 9.4454,
+      "spherical_median_deg": 6.8054,
+      "spherical_p90_deg": 19.9330,
+      "spherical_rmse_deg": 13.1949,
+      "yaw_mae_deg": 8.1654,
+      "pitch_mae_deg": 3.6428,
+      "error_reduction_vs_persistence_pct": 32.32,
+      "error_reduction_vs_constant_velocity_pct": 18.27,
+      "mean_latency_us": 271.67,
+      "median_latency_us": 249.70
+    }
+  },
+  "tiling_specifications_and_evaluation": {
+    "canvas_dimensions": {
+      "width_px": 3840,
+      "height_px": 1920,
+      "aspect_ratio": "2:1",
+      "projection": "Equirectangular (ERP)"
+    },
+    "grid_layout": {
+      "rows": 4,
+      "cols": 6,
+      "total_tiles": 24,
+      "tile_width_px": 640,
+      "tile_height_px": 480,
+      "tile_yaw_span_deg": 60.0,
+      "tile_pitch_span_deg": 45.0
+    },
+    "viewport_field_of_view": {
+      "horizontal_fov_deg": 100.0,
+      "vertical_fov_deg": 100.0,
+      "ray_grid": "21x21 (441 discrete rays)"
+    },
+    "evaluated_samples_count": 9025,
+    "subsampling_stride": 5,
+    "test_subjects_evaluated": [9, 16, 20, 22, 30, 40, 44, 49],
+    "results_summary": {
+      "persistence_baseline": {
+        "mean_tile_recall_pct": 89.79,
+        "mean_tile_precision_pct": 90.16,
+        "mean_viewport_coverage_pct": 95.92,
+        "p10_viewport_coverage_pct": 85.71,
+        "p90_viewport_coverage_pct": 100.00,
+        "avg_tiles_fetched": 8.88,
+        "tile_area_ratio_pct": 37.00
+      },
+      "final_gru_no_guard_band": {
+        "mean_tile_recall_pct": 92.55,
+        "mean_tile_precision_pct": 92.99,
+        "mean_viewport_coverage_pct": 97.99,
+        "p10_viewport_coverage_pct": 94.33,
+        "p90_viewport_coverage_pct": 100.00,
+        "avg_tiles_fetched": 8.87,
+        "tile_area_ratio_pct": 36.98
+      },
+      "final_gru_plus_1_guard_band": {
+        "mean_tile_recall_pct": 99.95,
+        "mean_tile_precision_pct": 45.93,
+        "mean_viewport_coverage_pct": 99.98,
+        "p10_viewport_coverage_pct": 100.00,
+        "p90_viewport_coverage_pct": 100.00,
+        "avg_tiles_fetched": 19.47,
+        "tile_area_ratio_pct": 81.11
+      }
+    }
+  }
+}
+

@@ -1,0 +1,55 @@
+================================================================================
+          PHASE 5: VIEWPORT TILE PREDICTION EVALUATION REPORT
+================================================================================
+Evaluation Dataset: final_model_test_predictions.csv (Test Set, 8 unseen subjects)
+Number of Evaluated Samples: 9,025 (subsample stride = 5 from 45,125 total test samples)
+Canvas Layout: 4 rows x 6 cols = 24 spatial tiles on 3840x1920 ERP Canvas
+Tile Dimensions: 640 x 480 pixels (60° yaw x 45° pitch per tile)
+Viewport FoV: 100.0° Horizontal x 100.0° Vertical (Ray grid: 21x21 = 441 rays)
+Prediction Horizon: k = 5 frames (~0.5 seconds lead time)
+
+SUMMARY BENCHMARK METRICS:
+--------------------------------------------------------------------------------
+                              Strategy  Mean Tile Hit Ratio (Recall)  Mean Tile Precision  Mean Viewport Coverage  10th Percentile Coverage (P10)  90th Percentile Coverage (P90)  Avg Tiles Fetched (out of 24)  Tile Area Ratio (%)
+                  Persistence Baseline                     89.999760            90.011908               96.019975                       85.714286                           100.0                       8.918892            37.162050
+       Final GRU Model (No Guard Band)                     92.492461            93.047786               97.984209                       94.331066                           100.0                       8.866925            36.945522
+Final GRU Model (+1 Guard Band Margin)                     99.943647            45.997847               99.980628                      100.000000                           100.0                      19.441330            81.005540
+
+KEY TECHNICAL FINDINGS (DYNAMICALLY COMPUTED):
+--------------------------------------------------------------------------------
+1. Tile Recall & Viewport Coverage:
+   - Persistence Baseline:
+     * Mean Tile Recall: 90.00%
+     * Mean Tile Precision: 90.01%
+     * Viewport Visual Coverage: 96.02% (P10: 85.71%, P90: 100.00%)
+     * Avg Tiles Fetched: 8.92 (37.16% of canvas area)
+   - Final GRU Model (No Guard Band):
+     * Mean Tile Recall: 92.49%
+     * Mean Tile Precision: 93.05%
+     * Viewport Visual Coverage: 97.98% (P10: 94.33%, P90: 100.00%)
+     * Avg Tiles Fetched: 8.87 (36.95% of canvas area)
+   - The GRU model achieves higher visual coverage and recall than the Persistence Baseline
+     at the ~0.5s lead time by anticipating head orientation trajectories.
+
+2. Guard Band Margin Trade-off:
+   - Final GRU Model (+1 Guard Band Margin):
+     * Viewport Visual Coverage: 99.98% (P10: 100.00%, P90: 100.00%)
+     * Tile Recall: 99.94%
+     * Tile Precision: 46.00%
+     * Avg Tiles Fetched: 19.44 (81.01% of canvas area)
+   - Adding a 1-ring margin increases visual coverage to 99.98%,
+     effectively buffering against rapid saccades and unexpected user movements.
+   - Trade-off: Precision decreases from 93.05% to 46.00%,
+     fetching an additional 10.57 tiles on average.
+
+3. Spatial Area Efficiency:
+   - Under equal-sized tile assumptions on ERP canvas, fetching 8.87 tiles (No Guard Band)
+     corresponds to 36.95% of full-frame uncompressed pixel area.
+   - With +1 Guard Band, fetching 19.44 tiles corresponds to 81.01% of area.
+   - Note on Metrics: Tile Area Ratio represents the fraction of 24 ERP spatial tiles fetched.
+     It does NOT represent measured compressed network bitrate savings or guarantee zero streaming stalls.
+
+4. Subject-Wise Generalization:
+   - Evaluated across 8 unseen test subjects (9, 16, 20, 22, 30, 40, 44, 49).
+   - Detailed per-subject metrics are saved to: tile_prediction_metrics_by_subject.csv
+================================================================================

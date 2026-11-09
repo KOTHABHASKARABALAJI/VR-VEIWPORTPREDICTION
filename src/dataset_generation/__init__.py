@@ -6,10 +6,12 @@ Dataset generation module for 360° viewport trajectory prediction:
 
 from .sequence_generator import (
     create_sliding_windows,
+    create_sliding_windows_with_metadata,
     get_subject_split_mapping,
 )
 
 __all__ = [
     "create_sliding_windows",
+    "create_sliding_windows_with_metadata",
     "get_subject_split_mapping",
 ]

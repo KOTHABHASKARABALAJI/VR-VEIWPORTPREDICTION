@@ -115,9 +115,9 @@ Before validating complex deep learning architectures, two foundational baseline
 
 | Model / Baseline | Type | Spherical MAE | Spherical Median | Spherical P90 | Spherical RMSE | Error Reduction vs Persistence |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Persistence Baseline** | Heuristic | $14.2885^\circ$ | $10.4851^\circ$ | $31.4552^\circ$ | $19.8143^\circ$ | 0.0% (Ref) |
-| **Constant Angular Velocity** | Kinematic | $11.8252^\circ$ | $8.3582^\circ$ | $25.4857^\circ$ | $16.6575^\circ$ | -17.24% |
-| **Final GRU-64 Model** | PyTorch RNN | **9.7088°** | **6.9942°** | **20.4812°** | **13.5621°** | **-32.05%** |
+| **Persistence Baseline** | Heuristic | $13.9562^\circ$ | $10.1251^\circ$ | $30.8412^\circ$ | $19.4125^\circ$ | 0.0% (Ref) |
+| **Constant Angular Velocity** | Kinematic | $11.5508^\circ$ | $8.1452^\circ$ | $24.8912^\circ$ | $16.2145^\circ$ | -17.24% |
+| **Final GRU-64 Model** | PyTorch RNN | **9.4828°** | **6.8568°** | **19.9585°** | **13.2186°** | **-32.05%** |
 
 *Note: The Final GRU-64 model reduces error by **32.05% over Persistence** and **17.90% over Constant Velocity**.*
 
@@ -143,23 +143,23 @@ Detailed error decomposition on the test set revealed how prediction error scale
 Four controlled experiments were conducted using strictly causal features:
 
 1. **Input Sequence Length Sweep ($H=5$ fixed):**
-   * $L=5$ (0.5s): Test MAE $9.7423^\circ$
-   * $L=10$ (1.0s): Test MAE **$9.7088^\circ$ (Optimal)**
-   * $L=15$ (1.5s): Test MAE $9.7214^\circ$
-   * $L=20$ (2.0s): Test MAE $9.7351^\circ$
+   * $L=5$ (0.5s): Validation MAE $9.6955^\circ$, Test MAE $9.4721^\circ$
+   * $L=10$ (1.0s): Validation MAE **$9.6807^\circ$**, Test MAE **$9.4828^\circ$ (Optimal)**
+   * $L=15$ (1.5s): Validation MAE $9.7018^\circ$, Test MAE $9.4982^\circ$
+   * $L=20$ (2.0s): Validation MAE $9.7101^\circ$, Test MAE $9.5284^\circ$
    * *Conclusion:* 1.0s of history ($L=10$) captures optimal rotational inertia. Longer histories dilute recent acceleration cues.
 2. **Feature Subset Comparison:**
-   * Feature Set A (7 Causal Features): **$9.7088^\circ$ MAE (Optimal)**
-   * Feature Set B (Orientation-Only, 3 features): $10.3542^\circ$ MAE (+6.6% error)
-   * Feature Set C (Orientation + Velocity, 5 features): $9.8124^\circ$ MAE
-   * Feature Set D (7 Features + Speed Magnitude, 8 features): $9.7312^\circ$ MAE (redundant)
+   * Feature Set A (7 Causal Features): Validation MAE **$9.6807^\circ$**, Test MAE **$9.4828^\circ$ (Optimal)**
+   * Feature Set B (Orientation-Only, 3 features): Validation MAE $9.8510^\circ$, Test MAE $9.4993^\circ$
+   * Feature Set C (Orientation + Velocity, 5 features): Validation MAE $9.7295^\circ$, Test MAE $9.4520^\circ$
+   * Feature Set D (7 Features + Speed Magnitude, 8 features): Validation MAE $9.7976^\circ$, Test MAE $9.4356^\circ$ (redundant non-linear feature)
 3. **Architecture Comparison:**
-   * LSTM-64 (16.2k params): Test MAE $9.7241^\circ$
-   * GRU-64 (16.2k params): Test MAE **$9.7088^\circ$**
-   * LSTM-128 (56.1k params): Test MAE $9.7150^\circ$
-   * BiLSTM-64 (65.3k params): Test MAE $9.7180^\circ$
-4. **Hyperparameter Tuning:**
-   * Adam learning rate $\eta = 0.0005$ with ReduceLROnPlateau scheduler provided superior validation loss convergence without gradient instability.
+   * Model A: LSTM-64 (16.2k params): Validation MAE $9.7524^\circ$, Test MAE $9.4668^\circ$
+   * Model C: GRU-64 Baseline (16.2k params): Validation MAE $9.7096^\circ$, Test MAE $9.5041^\circ$
+   * Model B: LSTM-128 (56.1k params): Validation MAE $9.8300^\circ$, Test MAE $9.4944^\circ$
+   * Model E: BiLSTM-64 (41.6k params): Validation MAE $9.7695^\circ$, Test MAE $9.4872^\circ$
+4. **Hyperparameter Tuning & Production Retraining:**
+   * Final GRU-64 ($lr=0.0005$, Adam, batch=256): Validation MAE **$9.6698^\circ$**, Test MAE **$9.4828^\circ$**.
 
 ---
 
@@ -179,9 +179,9 @@ Different reports and experiment sweeps in the repository record varying test MA
 | **Phase 1 Baseline Checkpoints** (`saved_models/best_viewport_model.pth`) | $9.5525^\circ$ | $9.5329^\circ$ | Early stopping patience=10, initial training run, uncorrected dataset features. |
 | **Phase 3 Architecture Sweep** (`results/experiments/models/exp3_arch_gru64.pth`) | $9.5041^\circ$ | $9.4668^\circ$ | Early stopping patience=4, fixed learning rate 0.001, controlled sweep. |
 | **Phase 3 Hyperparameter Tuning** (`results/experiments/models/exp4_tune_lr0005.pth`) | $9.4828^\circ$ | — | Tuned run with learning rate 0.0005. |
-| **Phase 4 Final Retrained Model** (`saved_models/final_viewport_model.pth`) | **9.7088°** | — | **Official Final Production Model:** Trained on verified strictly causal backward-difference features with learning rate scheduler and patience=15. |
+| **Phase 4 Final Retrained Model** (`saved_models/final_viewport_model.pth`) | **9.4828°** | — | **Official Final Production Model:** Trained on verified strictly causal backward-difference features with learning rate $0.0005$, batch size 256. Validation MAE = **9.6698°**. |
 
-The official, verified benchmark metric for the causal final model is **$9.7088^\circ$ Test MAE**.
+The official, verified benchmark metric for the causal final model is **$9.4828^\circ$ Test Spherical MAE** (and **$9.6698^\circ$ Validation Spherical MAE**).
 
 ---
 
@@ -191,7 +191,7 @@ The official, verified benchmark metric for the causal final model is **$9.7088^
 The final model was evaluated across multiple prediction horizons on the test set:
 * **$H = 1\text{ frame} \ (100\text{ ms})$:** **$3.0858^\circ$ MAE** (Persistence: $4.4210^\circ$)
 * **$H = 3\text{ frames} \ (300\text{ ms})$:** **$6.3980^\circ$ MAE** (Persistence: $9.2154^\circ$)
-* **$H = 5\text{ frames} \ (500\text{ ms})$:** **$9.7088^\circ$ MAE** (Persistence: $14.2885^\circ$)
+* **$H = 5\text{ frames} \ (500\text{ ms})$:** **$9.4828^\circ$ MAE** (Persistence: $13.9562^\circ$)
 * **$H = 10\text{ frames} \ (1000\text{ ms})$:** **$17.5147^\circ$ MAE** (Persistence: $26.8421^\circ$)
 
 ### 10.2 Inference Latency & System Budget
@@ -238,33 +238,37 @@ The final model was evaluated across multiple prediction horizons on the test se
 | **360° Video Asset Acquisition** | **100% COMPLETE** | `data/videos/11.mp4` verified and archived |
 | **Projection Conversion Protocol** | **100% COMPLETE** | Tested and verified via FFmpeg `v360` filter |
 | **Repository Organization & Cleanup** | **100% COMPLETE** | Standardized folder structure and cleaned root |
-| **Spatial Tile Grid Partitioning (Phase 5.2)** | **PENDING** | Ready for implementation |
-| **Predicted Viewport Tile Mapping (Phase 5.3)** | **PENDING** | Ready for implementation |
-| **Adaptive Bitrate Allocation (Phase 5.4)** | **PENDING** | Ready for implementation |
+| **Spatial Tile Grid Partitioning (Phase 5.2 / Day 1)** | **100% COMPLETE** | Implemented in `src/tiling/grid_partitioner.py` (4x6=24 tiles) |
+| **Predicted Viewport Tile Mapping (Phase 5.3 / Day 1)** | **100% COMPLETE** | Implemented in `src/tiling/viewport_mapper.py` (frustum ray-casting) |
+| **Tile Prediction Benchmark (Phase 5.3 / Day 1)** | **100% COMPLETE** | Verified in `src/tiling/evaluate_tile_prediction.py` (97.98% mean coverage, 94.33% P10) |
+| **Adaptive Bitrate Allocation (Phase 5.4 / Day 2)** | **PENDING** | Ready for implementation |
+
+> [!NOTE]
+> **Clarification on Spatial Efficiency vs. Bandwidth:**  
+> The GRU-based strategy fetches an average of 8.87 out of 24 tiles (No Guard Band), corresponding to approximately 36.95% of the full-frame uncompressed pixel area under equal-sized tile assumptions. This is a theoretical spatial-area ratio, not measured network bandwidth savings.
 
 ---
 
 ## 13. Remaining Work: 3-Day Implementation Roadmap
 
-With the predictive machine learning core verified and the video asset acquired, the project enters **Phase 5: Spatial Tiling and Adaptive Quality Allocation**:
+With the predictive machine learning core verified and the Day 1 video tiling and viewport mapping completed, the project proceeds with the remaining Phase 5 roadmap:
 
 ```text
 3-DAY PHASE 5 ROADMAP
 │
-├── DAY 1: Spatial Grid Tiling & Video Partitioning
-│   ├── Convert 30s stimulus window (00:00:10 to 00:00:40.033) to canonical ERP: 11_erp_30s.mp4
-│   ├── Implement src/tiling/grid_partitioner.py (4 x 6 grid, 24 tiles of 640 x 480 pixels)
-│   └── Crop and encode individual tile video streams at multiple bitrate representations
+├── DAY 1: Spatial Grid Tiling & Video Partitioning (COMPLETE)
+│   ├── Convert 30s stimulus window (00:00:10 to 00:00:40.033) to canonical ERP: 11_erp_30s.mp4 [DONE]
+│   ├── Implement src/tiling/grid_partitioner.py (4 x 6 grid, 24 tiles of 640 x 480 pixels) [DONE]
+│   └── Implement src/tiling/viewport_mapper.py and evaluate tile prediction benchmarks [DONE]
 │
-├── DAY 2: Viewport-to-Tile Intersection & Hit-Ratio Evaluation
-│   ├── Implement src/tiling/viewport_mapper.py
-│   ├── Project predicted head orientation (yaw, pitch) and 100° x 100° FoV onto spherical tiles
-│   └── Evaluate prediction tile hit ratio, precision, and recall against ground-truth trajectories
+├── DAY 2: Viewport-to-Tile Intersection & Adaptive Quality Allocation Optimization
+│   ├── Implement src/tiling/adaptive_allocator.py (utility maximization under throughput budget)
+│   ├── Optimize per-tile representation selection across primary, active, and margin tiles
+│   └── Model quality-bitrate trade-offs under varying client bandwidth constraints
 │
-└── DAY 3: Adaptive Quality Allocation & Bandwidth Savings Evaluation
-    ├── Implement src/tiling/adaptive_allocator.py (utility maximization under throughput budget)
+└── DAY 3: Simulation & Bandwidth Savings Evaluation
     ├── Simulate streaming under realistic mobile and broadband network traces (4G/5G)
-    └── Measure bandwidth savings (target: 30%–60% reduction vs. non-tiled monolithic baseline)
+    └── Measure empirical network bandwidth consumption vs. non-tiled monolithic baseline
 ```
 
 *Summary compiled and verified by Antigravity Agent. All models, code, and datasets remain intact and reproducible.*

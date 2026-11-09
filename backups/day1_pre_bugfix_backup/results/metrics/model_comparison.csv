@@ -1,0 +1,5 @@
+Model Name,Best Epoch,Training Time (s),Val Loss (MSE),Yaw MAE (deg),Yaw RMSE (deg),Pitch MAE (deg),Pitch RMSE (deg),Spherical MAE (deg),Spherical Median (deg),Spherical 90th (deg)
+Model A — LSTM-64 baseline,9,98.45,0.053511,8.3083,12.3209,4.1462,6.4116,9.7504,7.1889,20.6641
+Model B — LSTM-128,8,159.13,0.054109,8.3992,12.393,4.2508,6.4358,9.8698,7.3099,20.6774
+Model C — GRU-64,6,105.69,0.0535,8.2182,12.3028,4.2132,6.4094,9.7289,7.1616,20.5276
+Model D — LSTM with Dropout,21,168.99,0.053813,8.3085,12.3504,4.1775,6.4316,9.7736,7.1778,20.6922
