@@ -1,0 +1,4 @@
+fov_deg,active_tiles_count,margin_tiles_count,viewport_weighted_utility,neighbourhood_weighted_utility,viewport_q4_tiles,neighbourhood_margin_upgrades
+90.0,5,11,3.4,3.3945578231292517,5,6
+100.0,8,8,3.303854875283447,3.2040816326530615,4,6
+110.0,8,8,3.2231292517006804,3.122448979591837,4,4

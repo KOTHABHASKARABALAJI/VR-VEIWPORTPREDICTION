@@ -1,0 +1,86 @@
+{
+  "project": "ML-Based Viewport Tile Prediction and Adaptive Quality Allocation for 360 Video Streaming",
+  "evaluation_phase": "Day 3 Final Audit",
+  "dataset": "AVTrack360",
+  "split": {
+    "train_subjects": 33,
+    "val_subjects": 7,
+    "test_subjects": 8
+  },
+  "test_subject_ids": [
+    9,
+    16,
+    20,
+    22,
+    30,
+    40,
+    44,
+    49
+  ],
+  "total_test_prediction_instances": 45121,
+  "terminology_note": "45121 instances = windows of N=10 historical frames each predicting k=5 frames ahead (~0.5s horizon)",
+  "gru_model": {
+    "architecture": "GRU-64",
+    "hidden_units": 64,
+    "sequence_length": 10,
+    "prediction_horizon_frames": 5
+  },
+  "tile_grid": {
+    "rows": 4,
+    "cols": 6,
+    "total_tiles": 24
+  },
+  "viewport_fov": {
+    "hfov_deg": 100.0,
+    "vfov_deg": 100.0,
+    "ray_samples_per_axis": 21
+  },
+  "quality_levels": {
+    "Q1_low_kbps": 100,
+    "Q2_medium_kbps": 300,
+    "Q3_high_kbps": 600,
+    "Q4_ultra_kbps": 1000
+  },
+  "bandwidth_budgets_kbps": [
+    2400,
+    5000,
+    7200,
+    10000,
+    14400,
+    20000
+  ],
+  "strategy_comparison_stride": 20,
+  "tile_evaluation_stride": 10,
+  "head_movement_base_orientation": {
+    "yaw_deg": 0.0,
+    "pitch_deg": 0.0
+  },
+  "head_movement_budget_kbps": 7200.0,
+  "head_movement_angles_deg": [
+    0,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30,
+    40,
+    45
+  ],
+  "empirical_retention_budget_kbps": 7200.0,
+  "empirical_retention_stride": 20,
+  "statistical_analysis": {
+    "bootstrap_replicates": 10000,
+    "random_seed": 42,
+    "ci_level": 0.95,
+    "paired_ttest_alternative": "greater (H1: Persistence MAE > GRU MAE)",
+    "independence_note": "Subject-level aggregation (N=8) used for inference to avoid pseudo-replication from temporally-correlated trajectory windows"
+  },
+  "disclaimers": [
+    "Bitrates are simulated assumptions based on nominal encoding estimates, not measured real-encoded bitrates",
+    "Quality utility values (1.0-4.0) are abstract relative scores, not PSNR/SSIM/VMAF measurements",
+    "Head-movement simulation is a SYNTHETIC CONTROLLED EXPERIMENT, not measured viewer behaviour",
+    "ERP tile area ratio ignores latitude-dependent distortion; polar tiles cover less actual spherical area",
+    "No real video codec or network emulation is performed"
+  ]
+}
